@@ -1,18 +1,18 @@
-# Persistent Effect of Temperature on GDP Identified from Lower Frequency Temperature Variability
-# Bastien-Olvera, B. A. and Moore, F. C.
+# # Persistent Effect of Temperature on GDP Identified from Lower Frequency Temperature Variability
+# # Bastien-Olvera, B. A. and Moore, F. C.
 
-## Index
-    # 1. Setup
-    # 2. Simulation (Figure 1 and 2)
-        # 2.1 Temperature fluctuations and filters - Figure 1
-        # 2.2 Global temperature simulation
-        # 2.3. Perform simulation - Figure 2
-    # 3. Empirical analysis (Figure 3 and Table 1)
-        # 3.1 Country-level regressions
-        # 3.2. Categorizing - Figure 3
-        # 3.3. FELM abs estimate by filter - Table 1, columns 1 and 2
-        # 3.4. Mean effect accross filters and socioeconomic variables; Supp Fig 1 and 2
-        # 3.5. Other datasets - Table 1, columns 3 to 6; Supp Fig 3
+# ## Index
+#     # 1. Setup
+#     # 2. Simulation (Figure 1 and 2)
+#         # 2.1 Temperature fluctuations and filters - Figure 1
+#         # 2.2 Global temperature simulation
+#         # 2.3. Perform simulation - Figure 2
+#     # 3. Empirical analysis (Figure 3 and Table 1)
+#         # 3.1 Country-level regressions
+#         # 3.2. Categorizing - Figure 3
+#         # 3.3. FELM abs estimate by filter - Table 1, columns 1 and 2
+#         # 3.4. Mean effect accross filters and socioeconomic variables; Supp Fig 1 and 2
+#         # 3.5. Other datasets - Table 1, columns 3 to 6; Supp Fig 3
 
 ## 1. Setup (start)
     #set working directory
@@ -166,8 +166,8 @@
                     level = unclass(level))
                 filt$templag=c(NA,filt$temp[1:(dim(filt)[1]-1)])
                 names(filt) <- c("temp","growth","levels","templag")
-                mod_gfilt=lm(growth~temp+templag,data=filt)$coef[2]
-                mod_lfilt=lm(levels~temp+templag,data=filt)$coef[2]
+                mod_gfilt=lm(growth~temp,data=filt)$coef[2]
+                mod_lfilt=lm(levels~temp,data=filt)$coef[2]
                 sims[i,k,]=c(mod_gfilt,mod_lfilt)
             }
             
@@ -209,6 +209,7 @@
         dataset <- c("wb","barro","mad") 
         datasetweather <- c("LMR","UDel")
         periods <- c(0,3,5,10,15)
+        periods <- c(0,10,20,25,27)
         fullmods_filter=array(dim=c(length(countries),2,length(periods),length(dataset),length(datasetweather)))
         fullmods_filter_p=array(dim=c(length(countries),2,length(periods),length(dataset),length(datasetweather)))
         panel_data <- data.frame(years = integer(),temp = double(), growth = double(), 
@@ -320,7 +321,26 @@
         names(fullmods_filter) <- c("countrycode","frequencies","econdata","climdata","Estimate","StandardError")
 
     ## 3.1. Country-level regressions (end)
-       
+        
+    ## 3.1b Panel Regression (start)
+        glimpse(panel_data)
+        panel_data$continent <- countrycode(sourcevar = panel_data$countrycode,
+                                origin = "iso3c",
+                                destination = "continent")
+        p1 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="0"),]
+        felm_panel1 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p1)
+        p2 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="3"),]
+        felm_panel2 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p2)
+        p3 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="5"),]
+        felm_panel3 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p3)
+        p4 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="10"),]
+        felm_panel4 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p4)
+        p5 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="15"),]
+        felm_panel5 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p5)
+        stargazer(felm_panel1,felm_panel2,felm_panel3,felm_panel4,felm_panel5,type="html", out="felm_panel.html")
+
+    ## 3.1b Panel Regression (end)
+
     ## 3.2. categorizing - Plotting Figure 3  (start)
 
         # sign of low freq (start)
@@ -426,8 +446,10 @@
                     fmod_fft$significant[5+5*(i-1)] <- 1
                 }
             }
-            fmod_fft$filters <- rep(c("Unfiltered","3 years","5 years", "10 years", "15 years"),217)
-            fmod_fft$filters <- factor(fmod_fft$filters, levels = c("Unfiltered", "3 years", "5 years", "10 years", "15 years"))            
+            filt_names <- c("Unfiltered","3 years","5 years", "10 years", "15 years")
+            filt_names <- c("Unfiltered","10 years","15 years", "20 years", "25 years")
+            fmod_fft$filters <- rep(filt_names,217)
+            fmod_fft$filters <- factor(fmod_fft$filters, levels = filt_names)            
             fmod_fft$category <-"other"
             fmod_fft$category[positive_Constant] <- "Constant"
             fmod_fft$category[positive_Intensifying] <- "Intensifying"
