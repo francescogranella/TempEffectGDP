@@ -209,7 +209,7 @@
         dataset <- c("wb","barro","mad") 
         datasetweather <- c("LMR","UDel")
         periods <- c(0,3,5,10,15)
-        periods <- c(0,10,20,25,27)
+        #periods <- c(0,10,20,25,27) Uncomment to get Supp Fig 2
         fullmods_filter=array(dim=c(length(countries),2,length(periods),length(dataset),length(datasetweather)))
         fullmods_filter_p=array(dim=c(length(countries),2,length(periods),length(dataset),length(datasetweather)))
         panel_data <- data.frame(years = integer(),temp = double(), growth = double(), 
@@ -323,21 +323,83 @@
     ## 3.1. Country-level regressions (end)
         
     ## 3.1b Panel Regression (start)
-        glimpse(panel_data)
-        panel_data$continent <- countrycode(sourcevar = panel_data$countrycode,
-                                origin = "iso3c",
-                                destination = "continent")
+        
+        coefT <- "temp"
+        x <- c(0,1,2,3)
+        xmat <- cbind(1, 2*x)
+            
         p1 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="0"),]
         felm_panel1 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p1)
+        # Getting marginal effect of an additional degree (start)
+            model <- felm_panel1
+            Sigma <- vcov(model)
+            sigma = Sigma[c(start1:end1),c(start1:end1)]
+            start1 <- which(names(coef(model))==coefT)
+            end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
+            beta.hat <- coef(model)[c(start1:end1)]
+            dgdt <- colSums(beta.hat*t(xmat)) 
+            ci1 <- dgdt + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+            ci2 <- dgdt- 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+        # Getting marginal effect of an additional degree (start)
+            
         p2 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="3"),]
         felm_panel2 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p2)
+        # Getting marginal effect of an additional degree (start)
+            model <- felm_panel2
+            Sigma <- vcov(model)
+            sigma = Sigma[c(start1:end1),c(start1:end1)]
+            start1 <- which(names(coef(model))==coefT)
+            end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
+            beta.hat <- coef(model)[c(start1:end1)]
+            dgdt <- colSums(beta.hat*t(xmat)) 
+            ci1 <- dgdt + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+            ci2 <- dgdt- 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+        # Getting marginal effect of an additional degree (start)
+         
         p3 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="5"),]
         felm_panel3 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p3)
+        # Getting marginal effect of an additional degree (start)
+            model <- felm_panel3
+            Sigma <- vcov(model)
+            sigma = Sigma[c(start1:end1),c(start1:end1)]
+            start1 <- which(names(coef(model))==coefT)
+            end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
+            beta.hat <- coef(model)[c(start1:end1)]
+            dgdt <- colSums(beta.hat*t(xmat)) 
+            ci1 <- dgdt + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+            ci2 <- dgdt- 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+        # Getting marginal effect of an additional degree (start)
+         
         p4 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="10"),]
         felm_panel4 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p4)
+        # Getting marginal effect of an additional degree (start)
+            model <- felm_panel4
+            Sigma <- vcov(model)
+            sigma = Sigma[c(start1:end1),c(start1:end1)]
+            start1 <- which(names(coef(model))==coefT)
+            end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
+            beta.hat <- coef(model)[c(start1:end1)]
+            dgdt <- colSums(beta.hat*t(xmat)) 
+            ci1 <- dgdt + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+            ci2 <- dgdt- 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+        # Getting marginal effect of an additional degree (start)
+         
         p5 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="15"),]
         felm_panel5 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p5)
-        stargazer(felm_panel1,felm_panel2,felm_panel3,felm_panel4,felm_panel5,type="html", out="felm_panel.html")
+        # Getting marginal effect of an additional degree (start)
+            model <- felm_panel5
+            Sigma <- vcov(model)
+            sigma = Sigma[c(start1:end1),c(start1:end1)]
+            start1 <- which(names(coef(model))==coefT)
+            end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
+            beta.hat <- coef(model)[c(start1:end1)]
+            dgdt <- colSums(beta.hat*t(xmat)) 
+            ci1 <- dgdt + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+            ci2 <- dgdt- 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+        # Getting marginal effect of an additional degree (start)
+         
+        
+        stargazer(felm_panel1,felm_panel2,felm_panel3,felm_panel4,felm_panel5,type="text")
 
     ## 3.1b Panel Regression (end)
 
@@ -447,7 +509,7 @@
                 }
             }
             filt_names <- c("Unfiltered","3 years","5 years", "10 years", "15 years")
-            filt_names <- c("Unfiltered","10 years","15 years", "20 years", "25 years")
+            #filt_names <- c("Unfiltered","10 years","15 years", "20 years", "25 years") #uncomment to get supp Fig 2
             fmod_fft$filters <- rep(filt_names,217)
             fmod_fft$filters <- factor(fmod_fft$filters, levels = filt_names)            
             fmod_fft$category <-"other"
