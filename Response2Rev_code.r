@@ -190,6 +190,27 @@
             nonlinreg <- lm(g~temp+I(temp^2),data=dataset)
             summary(linreg)            
             summary(nonlinreg)
+
+            model <- nonlinreg
+            Sigma <- vcov(model)
+            coefT <- "temp"
+            start1 <- which(names(coef(model))==coefT)
+            end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
+            sigma = Sigma[c(start1:end1),c(start1:end1)]
+            beta.hat <- coef(model)[c(start1:end1)]
+            x <- seq(from=min(dataset$temp),to=max(dataset$temp), length=length(dataset$temp))
+            xmat <- cbind(x, x^2)
+            gestimated <- colSums(beta.hat*t(xmat)) 
+            ci1 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+            ci2 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+
+            glimpse(dataset)
+            dataset$gestimated <- gestimated
+            dataset$x <- xmat[,1]
+
+            ggplot(data=dataset, aes(x=temp,y=g))+
+            geom_point()+
+            geom_line(aes(x=x,y=gestimated))
             
         # Comparing quadratic 
 
