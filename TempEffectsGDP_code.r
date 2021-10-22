@@ -22,7 +22,7 @@
         "ggpubr","dplR","reshape2","raster","dplyr",
         "RColorBrewer","colorspace","spData","sf","countrycode", "ggstatsplot",
         "ggsignif","dlnm","lfe","directlabels","splines","timeSeries",
-        "MASS","stargazer","jtools","wbstats")
+        "MASS","stargazer","jtools","wbstats","dplR")
     lapply(x, require, character.only = TRUE)
     # some functions
     tsyears <- function(ts) as.numeric(trunc(time(ts)))
