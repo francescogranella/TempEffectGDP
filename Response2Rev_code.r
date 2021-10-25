@@ -135,313 +135,613 @@
     ## 2.3. Perform simulation - WITH QUADRATIC TERM (start)
 
 
-    bhm <- function(T){
-                G<- 0.0127*T-0.0005*(T^2)
-                return(G)
-            }
-            T <- seq(13,16,length=100)
-            response <- bhm(T)
-            ustemprange <- range(wbUS$UDel_pop_temp,na.rm=TRUE)
-            ust <- seq(from=min(wbUS$UDel_pop_temp,na.rm=TRUE),to=max(wbUS$UDel_pop_temp,na.rm=TRUE),length=100)         
-            curveT <- data.frame(T,response)
+        bhm <- function(T){
+                    G<- 0.0127*T-0.0005*(T^2)
+                    return(G)
+                }
+                T <- seq(13,16,length=100)
+                response <- bhm(T)
+                ustemprange <- range(wbUS$UDel_pop_temp,na.rm=TRUE)
+                ust <- seq(from=min(wbUS$UDel_pop_temp,na.rm=TRUE),to=max(wbUS$UDel_pop_temp,na.rm=TRUE),length=100)         
+                curveT <- data.frame(T,response)
 
-            tan <- function(T){
-                slope <-  0.0127-2*0.0005*mean(ust)
-                intercept <- (0.0127*mean(ust)-0.0005*(mean(ust)^2) )-(slope*mean(ust))
-                Tan <- intercept + slope * (T)
-                return(Tan)
-            }
-            
-            Tan<-tan(ust)
-            plot(T,response)
-            lines(ust,Tan)
-
-            abs(ust[1]-mean(ust)) #1 degree of difference
-            plot(ust,tan(ust)-bhm(ust))
-
-        time=350 #or 350 years
-        basegr=0.01 #2% per year baseline growth rate
-        start=100
-        baseline=rep(basegr,time)
-        coef=-0.05 #effect size - change in growth per degree warming()
-        coef2=-0.05
-        growthsd=0.005 #standard deviation of growth variability unexplained by temperature
-        periods <- c(0,3,5,10,15)
-        nsims=500
-        sims=array(dim=c(nsims,length(periods),2))
-        for(i in 1:nsims){
-            randomtemp=Re(randomts(gtemp))[1:time]
-            #randomtemp=Re(randomts(ustemp_lmr))[1:time]
-            randomgrowth_g=basegr #growth impact model
-            randomgrowth_l=basegr #levels impact model
-            for(j in 2:time){
-            #quadratic
-            randomgrowth_g=c(randomgrowth_g, basegr+(randomtemp[j]*coef)+(coef2*randomtemp[j]^2)+rnorm(1,mean=0,sd=growthsd))
-            randomgrowth_l=c(randomgrowth_l, basegr+(randomtemp[j]-randomtemp[j-1])*coef+coef2*(randomtemp[j]^2-randomtemp[j-1]^2)+rnorm(1,mean=0,sd=growthsd))
-            #linear
-            #randomgrowth_g=c(randomgrowth_g, basegr+(randomtemp[j]*coef)+rnorm(1,mean=0,sd=growthsd))
-            #randomgrowth_l=c(randomgrowth_l, basegr+(randomtemp[j]-randomtemp[j-1])*coef+rnorm(1,mean=0,sd=growthsd))
-            }
-            dataset=data.frame(years=1:time,temp=randomtemp,g=randomgrowth_g,l=randomgrowth_l)
-            dataset$templag =c(NA,dataset$temp[1:(dim(dataset)[1]-1)])
-            for(k in 1:length(periods)){
-            mod_g=lm(g~temp+templag,data=dataset)$coef[2]
-            mod_l=lm(l~temp+templag,data=dataset)$coef[2]
-
-            if (k==1){sims[i,k,]=c(mod_g,mod_l)
-                }else{
-                tempts <- pass.filt(randomtemp, W=periods[k], type="low", method="Butterworth")
-                growth <- randomgrowth_g
-                level <- randomgrowth_l
-                filt <- data.frame(temp = unclass(tempts), growth = unclass(growth),
-                    level = unclass(level))
-                filt$templag=c(NA,filt$temp[1:(dim(filt)[1]-1)])
-                names(filt) <- c("temp","growth","levels","templag")
-                mod_gfilt=lm(growth~temp,data=filt)$coef[2]
-                mod_lfilt=lm(levels~temp,data=filt)$coef[2]
-                sims[i,k,]=c(mod_gfilt,mod_lfilt)
-            }
-            
-
-            }
-            if(i%%50==0) print(i)
-        }
-        # Comparing quadratic
-            #Unfiltered Growth (start)
-                linreg <- lm(g~temp,data=dataset)
-                nonlinreg <- lm(g~temp+I(temp^2),data=dataset)
-                summary(linreg)            
-                summary(nonlinreg)
-
-                model <- nonlinreg
-                Sigma <- vcov(model)
-                coefT <- "temp"
-                start1 <- which(names(coef(model))==coefT)
-                end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
-                sigma = Sigma[c(1:end1),c(1:end1)]
-                beta.hat <- coef(model)[c(1:end1)]
-                x <- seq(from=min(dataset$temp),to=max(dataset$temp), length=length(dataset$temp))
-                xmat <- cbind(1,x, x^2)
-                gestimated <- colSums(beta.hat*t(xmat)) 
-                ci12 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-                ci22 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-
-                glimpse(dataset)
-                dataset$gestimated2 <- gestimated
-                dataset$ci12 <- ci12
-                dataset$ci22 <- ci22
-                dataset$x <- xmat[,2]
-
-                model <- linreg
-                sigma <- vcov(model)
-                beta.hat <- coef(model)
-                x <- seq(from=min(dataset$temp),to=max(dataset$temp), length=length(dataset$temp))
-                xmat <- cbind(1,x)
-                gestimated <- colSums(beta.hat*t(xmat)) 
-                ci1 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-                ci2 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-
-                glimpse(dataset)
-                dataset$gestimated <- gestimated
-                dataset$ci1<- ci1
-                dataset$ci2 <- ci2
-
-                cols=c("#d3818c","#7375a4")
-                u_g <- ggplot(data=dataset, aes(x=temp,y=g))+
-                geom_point(alpha=0.5)+
-                geom_line(aes(x=x,y=gestimated),col=cols[1])+
-                geom_ribbon(aes(ymin=ci1,ymax=ci2,x=x),alpha=0.2,fill=cols[1])+
-                geom_line(aes(x=x,y=gestimated2),col=cols[2])+
-                geom_ribbon(aes(ymin=ci12,ymax=ci22,x=x),alpha=0.2,fill=cols[2])+
-                xlab("Temperature change")+
-                ylab("Growth") + 
-                ggtitle("Unfiltered Growth World")
-            #Unfiltered Growth (end)
-            
-            #Unfiltered levels (start)
-                linreg <- lm(l~temp+templag,data=dataset)
-                nonlinreg <- lm(l~temp+I(temp^2)+templag,data=dataset)
-                summary(linreg)            
-                summary(nonlinreg)
-
-                model <- nonlinreg
-                Sigma <- vcov(model)
-                coefT <- "temp"
-                start1 <- which(names(coef(model))==coefT)
-                end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
-                sigma = Sigma[c(1:end1),c(1:end1)]
-                beta.hat <- coef(model)[c(1:end1)]
-                x <- seq(from=min(dataset$temp),to=max(dataset$temp), length=length(dataset$temp))
-                xmat <- cbind(1,x, x^2)
-                gestimated <- colSums(beta.hat*t(xmat)) 
-                ci12 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-                ci22 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-
-                glimpse(dataset)
-                dataset$gestimated2 <- gestimated
-                dataset$ci12 <- ci12
-                dataset$ci22 <- ci22
-                dataset$x <- xmat[,2]
-
-                model <- linreg
-                sigma <- vcov(model)
-                start1 <- which(names(coef(model))==coefT)
-                end1 <- which(names(coef(model))==coefT)
-                sigma = Sigma[c(1:end1),c(1:end1)]
-                beta.hat <- coef(model)[c(1:end1)]
-                x <- seq(from=min(dataset$temp),to=max(dataset$temp), length=length(dataset$temp))
-                xmat <- cbind(1,x)
-                gestimated <- colSums(beta.hat*t(xmat)) 
-                ci1 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-                ci2 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-
-                glimpse(dataset)
-                dataset$gestimated <- gestimated
-                dataset$ci12 <- ci1
-                dataset$ci22 <- ci2
-
-                cols=c("#d3818c","#7375a4")
-                u_l <- ggplot(data=dataset, aes(x=temp,y=l))+
-                geom_point(alpha=0.5)+
-                geom_line(aes(x=x,y=gestimated),col=cols[1])+
-                geom_ribbon(aes(ymin=ci1,ymax=ci2,x=x),alpha=0.2,fill=cols[1])+
-                geom_line(aes(x=x,y=gestimated2),col=cols[2])+
-                geom_ribbon(aes(ymin=ci12,ymax=ci22,x=x),alpha=0.2,fill=cols[2])+
-                xlab("Temperature change")+
-                ylab("Growth") + 
-                ggtitle("Unfiltered Levels World")
-            #Unfiltered levels (end)
-
-            #15y-filtered Growth (start)
-                linreg <- lm(growth~temp,data=filt)
-                nonlinreg <- lm(growth~temp+I(temp^2),data=filt)
-                summary(linreg)            
-                summary(nonlinreg)
-
-                model <- nonlinreg
-                Sigma <- vcov(model)
-                coefT <- "temp"
-                start1 <- which(names(coef(model))==coefT)
-                end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
-                sigma = Sigma[c(1:end1),c(1:end1)]
-                beta.hat <- coef(model)[c(1:end1)]
-                x <- seq(from=min(filt$temp),to=max(filt$temp), length=length(filt$temp))
-                xmat <- cbind(1,x, x^2)
-                gestimated <- colSums(beta.hat*t(xmat)) 
-                ci12 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-                ci22 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-
-                glimpse(filt)
-                filt$gestimated2 <- gestimated
-                filt$ci12 <- ci12
-                filt$ci22 <- ci22
-                filt$x <- xmat[,2]
-
-                model <- linreg
-                sigma <- vcov(model)
-                beta.hat <- coef(model)
-                x <- seq(from=min(filt$temp),to=max(filt$temp), length=length(filt$temp))
-                xmat <- cbind(1,x)
-                gestimated <- colSums(beta.hat*t(xmat)) 
-                ci1 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-                ci2 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-
-                glimpse(filt)
-                filt$gestimated <- gestimated
-                filt$ci1 <- ci1
-                filt$ci2 <- ci2
-
-                cols=c("#d3818c","#7375a4")
-                g_15 <- ggplot(data=filt, aes(x=temp,y=growth))+
-                geom_point(alpha=0.5)+
-                geom_line(aes(x=x,y=gestimated),col=cols[1])+
-                geom_ribbon(aes(ymin=ci1,ymax=ci2,x=x),alpha=0.2,fill=cols[1])+
-                geom_line(aes(x=x,y=gestimated2),col=cols[2])+
-                geom_ribbon(aes(ymin=ci12,ymax=ci22,x=x),alpha=0.2,fill=cols[2])+
-                xlab("Temperature change")+
-                ylab("Growth") + 
-                ggtitle("15-y filtered Growth World")
-            #15y-filtered Growth (end)
-            
-            #15y-filtered levels (start)
-                linreg <- lm(levels~temp+templag,data=filt)
-                nonlinreg <- lm(levels~temp+I(temp^2)+templag,data=filt)
-                summary(linreg)            
-                summary(nonlinreg)
-
-                model <- nonlinreg
-                Sigma <- vcov(model)
-                coefT <- "temp"
-                start1 <- which(names(coef(model))==coefT)
-                end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
-                sigma = Sigma[c(1:end1),c(1:end1)]
-                beta.hat <- coef(model)[c(1:end1)]
-                x <- seq(from=min(filt$temp),to=max(filt$temp), length=length(filt$temp))
-                xmat <- cbind(1,x, x^2)
-                gestimated <- colSums(beta.hat*t(xmat)) 
-                ci12 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-                ci22 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-
-                glimpse(filt)
-                filt$gestimated2 <- gestimated
-                filt$ci12 <- ci12
-                filt$ci22 <- ci22
-                filt$x <- xmat[,2]
-
-                model <- linreg
-                sigma <- vcov(model)
-                start1 <- which(names(coef(model))==coefT)
-                end1 <- which(names(coef(model))==coefT)
-                sigma = Sigma[c(1:end1),c(1:end1)]
-                beta.hat <- coef(model)[c(1:end1)]
-                x <- seq(from=min(filt$temp),to=max(filt$temp), length=length(filt$temp))
-                xmat <- cbind(1,x)
-                gestimated <- colSums(beta.hat*t(xmat)) 
-                ci1 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-                ci2 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
-
-                glimpse(filt)
-                filt$gestimated <- gestimated
-                filt$ci1 <- ci1
-                filt$ci2 <- ci2
-
-                cols=c("#d3818c","#7375a4")
-                l_15 <- ggplot(data=filt, aes(x=temp,y=levels))+
-                geom_point(alpha=0.5)+
-                geom_line(aes(x=x,y=gestimated),col=cols[1])+
-                geom_ribbon(aes(ymin=ci1,ymax=ci2,x=x),alpha=0.2,fill=cols[1])+
-                geom_line(aes(x=x,y=gestimated2),col=cols[2])+
-                geom_ribbon(aes(ymin=ci12,ymax=ci22,x=x),alpha=0.2,fill=cols[2])+
-                xlab("Temperature change")+
-                ylab("Growth") + 
-                ggtitle("15-y filtered Levels World")
-            #15y-filteredd levels (end)
-            
-            # Test 
-                simsfiltmean=apply(sims,MARGIN=c(2,3),FUN=mean)
-                simsfiltsd=apply(sims,MARGIN=c(2,3),FUN=sd)
-                colnames(simsfiltmean)=c("Growth","Level");rownames(simsfiltmean)=periods
-                simsfiltdat=cbind(melt(simsfiltmean),melt(simsfiltsd)[,3])
-                colnames(simsfiltdat)=c("periodsregationPeriod","ImpactType","MeanEffect","SDEffect")
-                theme_set(theme_bw(base_size = 20))
+                tan <- function(T){
+                    slope <-  0.0127-2*0.0005*mean(ust)
+                    intercept <- (0.0127*mean(ust)-0.0005*(mean(ust)^2) )-(slope*mean(ust))
+                    Tan <- intercept + slope * (T)
+                    return(Tan)
+                }
                 
-                simsfiltdat$periodsregationPeriod <- c("Unfiltered", "3 years", "5 years", "10 years", "15 years","Unfiltered", "3 years", "5 years", "10 years", "15 years")
-                simsfiltdat$periodsregationPeriod <- factor(simsfiltdat$periodsregationPeriod,
-                    levels = c("Unfiltered", "3 years", "5 years", "10 years", "15 years"))
+                Tan<-tan(ust)
+                plot(T,response)
+                lines(ust,Tan)
+
+                abs(ust[1]-mean(ust)) #1 degree of difference
+                plot(ust,tan(ust)-bhm(ust))
+
+            time=350 #or 350 years
+            basegr=0.01 #2% per year baseline growth rate
+            start=100
+            baseline=rep(basegr,time)
+            coef=-0.05 #effect size - change in growth per degree warming()
+            coef2=-0.05
+            growthsd=0.005 #standard deviation of growth variability unexplained by temperature
+            periods <- c(0,3,5,10,15)
+            nsims=500
+            sims=array(dim=c(nsims,length(periods),2))
+            for(i in 1:nsims){
+                randomtemp=Re(randomts(gtemp))[1:time]
+                #randomtemp=Re(randomts(ustemp_lmr))[1:time]
+                randomgrowth_g=basegr #growth impact model
+                randomgrowth_l=basegr #levels impact model
+                for(j in 2:time){
+                #quadratic
+                randomgrowth_g=c(randomgrowth_g, basegr+(randomtemp[j]*coef)+(coef2*randomtemp[j]^2)+rnorm(1,mean=0,sd=growthsd))
+                randomgrowth_l=c(randomgrowth_l, basegr+(randomtemp[j]-randomtemp[j-1])*coef+coef2*(randomtemp[j]^2-randomtemp[j-1]^2)+rnorm(1,mean=0,sd=growthsd))
+                #linear
+                #randomgrowth_g=c(randomgrowth_g, basegr+(randomtemp[j]*coef)+rnorm(1,mean=0,sd=growthsd))
+                #randomgrowth_l=c(randomgrowth_l, basegr+(randomtemp[j]-randomtemp[j-1])*coef+rnorm(1,mean=0,sd=growthsd))
+                }
+                dataset=data.frame(years=1:time,temp=randomtemp,g=randomgrowth_g,l=randomgrowth_l)
+                dataset$templag =c(NA,dataset$temp[1:(dim(dataset)[1]-1)])
+                for(k in 1:length(periods)){
+                mod_g=lm(g~temp+templag,data=dataset)$coef[2]
+                mod_l=lm(l~temp+templag,data=dataset)$coef[2]
+
+                if (k==1){sims[i,k,]=c(mod_g,mod_l)
+                    }else{
+                    tempts <- pass.filt(randomtemp, W=periods[k], type="low", method="Butterworth")
+                    growth <- randomgrowth_g
+                    level <- randomgrowth_l
+                    filt <- data.frame(temp = unclass(tempts), growth = unclass(growth),
+                        level = unclass(level))
+                    filt$templag=c(NA,filt$temp[1:(dim(filt)[1]-1)])
+                    names(filt) <- c("temp","growth","levels","templag")
+                    mod_gfilt=lm(growth~temp,data=filt)$coef[2]
+                    mod_lfilt=lm(levels~temp,data=filt)$coef[2]
+                    sims[i,k,]=c(mod_gfilt,mod_lfilt)
+                }
                 
-                glimpse(simsfiltdat$periodsregationPeriod)
+
+                }
+                if(i%%50==0) print(i)
+            }
+            # Comparing quadratic
+                #Unfiltered Growth (start)
+                    linreg <- lm(g~temp,data=dataset)
+                    nonlinreg <- lm(g~temp+I(temp^2),data=dataset)
+                    summary(linreg)            
+                    summary(nonlinreg)
+
+                    model <- nonlinreg
+                    Sigma <- vcov(model)
+                    coefT <- "temp"
+                    start1 <- which(names(coef(model))==coefT)
+                    end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
+                    sigma = Sigma[c(1:end1),c(1:end1)]
+                    beta.hat <- coef(model)[c(1:end1)]
+                    x <- seq(from=min(dataset$temp),to=max(dataset$temp), length=length(dataset$temp))
+                    xmat <- cbind(1,x, x^2)
+                    gestimated <- colSums(beta.hat*t(xmat)) 
+                    ci12 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+                    ci22 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+
+                    glimpse(dataset)
+                    dataset$gestimated2 <- gestimated
+                    dataset$ci12 <- ci12
+                    dataset$ci22 <- ci22
+                    dataset$x <- xmat[,2]
+
+                    model <- linreg
+                    sigma <- vcov(model)
+                    beta.hat <- coef(model)
+                    x <- seq(from=min(dataset$temp),to=max(dataset$temp), length=length(dataset$temp))
+                    xmat <- cbind(1,x)
+                    gestimated <- colSums(beta.hat*t(xmat)) 
+                    ci1 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+                    ci2 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+
+                    glimpse(dataset)
+                    dataset$gestimated <- gestimated
+                    dataset$ci1<- ci1
+                    dataset$ci2 <- ci2
+
+                    cols=c("#d3818c","#7375a4")
+                    u_g <- ggplot(data=dataset, aes(x=temp,y=g))+
+                    geom_point(alpha=0.5)+
+                    geom_line(aes(x=x,y=gestimated),col=cols[1])+
+                    geom_ribbon(aes(ymin=ci1,ymax=ci2,x=x),alpha=0.2,fill=cols[1])+
+                    geom_line(aes(x=x,y=gestimated2),col=cols[2])+
+                    geom_ribbon(aes(ymin=ci12,ymax=ci22,x=x),alpha=0.2,fill=cols[2])+
+                    xlab("Temperature change")+
+                    ylab("Growth") + 
+                    ggtitle("Unfiltered Growth World")
+                #Unfiltered Growth (end)
                 
+                #Unfiltered levels (start)
+                    linreg <- lm(l~temp+templag,data=dataset)
+                    nonlinreg <- lm(l~temp+I(temp^2)+templag,data=dataset)
+                    summary(linreg)            
+                    summary(nonlinreg)
+
+                    model <- nonlinreg
+                    Sigma <- vcov(model)
+                    coefT <- "temp"
+                    start1 <- which(names(coef(model))==coefT)
+                    end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
+                    sigma = Sigma[c(1:end1),c(1:end1)]
+                    beta.hat <- coef(model)[c(1:end1)]
+                    x <- seq(from=min(dataset$temp),to=max(dataset$temp), length=length(dataset$temp))
+                    xmat <- cbind(1,x, x^2)
+                    gestimated <- colSums(beta.hat*t(xmat)) 
+                    ci12 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+                    ci22 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+
+                    glimpse(dataset)
+                    dataset$gestimated2 <- gestimated
+                    dataset$ci12 <- ci12
+                    dataset$ci22 <- ci22
+                    dataset$x <- xmat[,2]
+
+                    model <- linreg
+                    sigma <- vcov(model)
+                    start1 <- which(names(coef(model))==coefT)
+                    end1 <- which(names(coef(model))==coefT)
+                    sigma = Sigma[c(1:end1),c(1:end1)]
+                    beta.hat <- coef(model)[c(1:end1)]
+                    x <- seq(from=min(dataset$temp),to=max(dataset$temp), length=length(dataset$temp))
+                    xmat <- cbind(1,x)
+                    gestimated <- colSums(beta.hat*t(xmat)) 
+                    ci1 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+                    ci2 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+
+                    glimpse(dataset)
+                    dataset$gestimated <- gestimated
+                    dataset$ci12 <- ci1
+                    dataset$ci22 <- ci2
+
+                    cols=c("#d3818c","#7375a4")
+                    u_l <- ggplot(data=dataset, aes(x=temp,y=l))+
+                    geom_point(alpha=0.5)+
+                    geom_line(aes(x=x,y=gestimated),col=cols[1])+
+                    geom_ribbon(aes(ymin=ci1,ymax=ci2,x=x),alpha=0.2,fill=cols[1])+
+                    geom_line(aes(x=x,y=gestimated2),col=cols[2])+
+                    geom_ribbon(aes(ymin=ci12,ymax=ci22,x=x),alpha=0.2,fill=cols[2])+
+                    xlab("Temperature change")+
+                    ylab("Growth") + 
+                    ggtitle("Unfiltered Levels World")
+                #Unfiltered levels (end)
+
+                #15y-filtered Growth (start)
+                    linreg <- lm(growth~temp,data=filt)
+                    nonlinreg <- lm(growth~temp+I(temp^2),data=filt)
+                    summary(linreg)            
+                    summary(nonlinreg)
+
+                    model <- nonlinreg
+                    Sigma <- vcov(model)
+                    coefT <- "temp"
+                    start1 <- which(names(coef(model))==coefT)
+                    end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
+                    sigma = Sigma[c(1:end1),c(1:end1)]
+                    beta.hat <- coef(model)[c(1:end1)]
+                    x <- seq(from=min(filt$temp),to=max(filt$temp), length=length(filt$temp))
+                    xmat <- cbind(1,x, x^2)
+                    gestimated <- colSums(beta.hat*t(xmat)) 
+                    ci12 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+                    ci22 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+
+                    glimpse(filt)
+                    filt$gestimated2 <- gestimated
+                    filt$ci12 <- ci12
+                    filt$ci22 <- ci22
+                    filt$x <- xmat[,2]
+
+                    model <- linreg
+                    sigma <- vcov(model)
+                    beta.hat <- coef(model)
+                    x <- seq(from=min(filt$temp),to=max(filt$temp), length=length(filt$temp))
+                    xmat <- cbind(1,x)
+                    gestimated <- colSums(beta.hat*t(xmat)) 
+                    ci1 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+                    ci2 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+
+                    glimpse(filt)
+                    filt$gestimated <- gestimated
+                    filt$ci1 <- ci1
+                    filt$ci2 <- ci2
+
+                    cols=c("#d3818c","#7375a4")
+                    g_15 <- ggplot(data=filt, aes(x=temp,y=growth))+
+                    geom_point(alpha=0.5)+
+                    geom_line(aes(x=x,y=gestimated),col=cols[1])+
+                    geom_ribbon(aes(ymin=ci1,ymax=ci2,x=x),alpha=0.2,fill=cols[1])+
+                    geom_line(aes(x=x,y=gestimated2),col=cols[2])+
+                    geom_ribbon(aes(ymin=ci12,ymax=ci22,x=x),alpha=0.2,fill=cols[2])+
+                    xlab("Temperature change")+
+                    ylab("Growth") + 
+                    ggtitle("15-y filtered Growth World")
+                #15y-filtered Growth (end)
                 
-                a=ggplot(simsfiltdat,aes(x=factor(periodsregationPeriod),y=MeanEffect*100,col=ImpactType,group=ImpactType))+geom_line(lwd=1.25)
-                a=a+geom_point(size=4)+geom_errorbar(aes(ymin=(MeanEffect-1.96*SDEffect)*100,ymax=(MeanEffect+1.96*SDEffect)*100),width=0.1,lwd=1.25)
-                a=a+geom_hline(yintercept=0,lwd=1.5,lty=3)
-                a=a+labs(x="Filters (minimum periodicity)",y="Estimated Growth Impact\n(% per Degree)",col="Impact Model")
-                a=a+scale_color_manual(values=c("#d3818c","#7375a4")) + ggtitle("Impacts estimation using low pass filters") #+ ylim(-10,5)
-                a
-            # Comparing quadratic (end)
+                #15y-filtered levels (start)
+                    linreg <- lm(levels~temp+templag,data=filt)
+                    nonlinreg <- lm(levels~temp+I(temp^2)+templag,data=filt)
+                    summary(linreg)            
+                    summary(nonlinreg)
+
+                    model <- nonlinreg
+                    Sigma <- vcov(model)
+                    coefT <- "temp"
+                    start1 <- which(names(coef(model))==coefT)
+                    end1 <- which(names(coef(model))==paste("I(",coefT,"^2)",sep=""))
+                    sigma = Sigma[c(1:end1),c(1:end1)]
+                    beta.hat <- coef(model)[c(1:end1)]
+                    x <- seq(from=min(filt$temp),to=max(filt$temp), length=length(filt$temp))
+                    xmat <- cbind(1,x, x^2)
+                    gestimated <- colSums(beta.hat*t(xmat)) 
+                    ci12 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+                    ci22 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+
+                    glimpse(filt)
+                    filt$gestimated2 <- gestimated
+                    filt$ci12 <- ci12
+                    filt$ci22 <- ci22
+                    filt$x <- xmat[,2]
+
+                    model <- linreg
+                    sigma <- vcov(model)
+                    start1 <- which(names(coef(model))==coefT)
+                    end1 <- which(names(coef(model))==coefT)
+                    sigma = Sigma[c(1:end1),c(1:end1)]
+                    beta.hat <- coef(model)[c(1:end1)]
+                    x <- seq(from=min(filt$temp),to=max(filt$temp), length=length(filt$temp))
+                    xmat <- cbind(1,x)
+                    gestimated <- colSums(beta.hat*t(xmat)) 
+                    ci1 <- gestimated + 1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+                    ci2 <- gestimated -  1.96*sqrt(diag((xmat %*% sigma) %*% t(xmat)))
+
+                    glimpse(filt)
+                    filt$gestimated <- gestimated
+                    filt$ci1 <- ci1
+                    filt$ci2 <- ci2
+
+                    cols=c("#d3818c","#7375a4")
+                    l_15 <- ggplot(data=filt, aes(x=temp,y=levels))+
+                    geom_point(alpha=0.5)+
+                    geom_line(aes(x=x,y=gestimated),col=cols[1])+
+                    geom_ribbon(aes(ymin=ci1,ymax=ci2,x=x),alpha=0.2,fill=cols[1])+
+                    geom_line(aes(x=x,y=gestimated2),col=cols[2])+
+                    geom_ribbon(aes(ymin=ci12,ymax=ci22,x=x),alpha=0.2,fill=cols[2])+
+                    xlab("Temperature change")+
+                    ylab("Growth") + 
+                    ggtitle("15-y filtered Levels World")
+                #15y-filteredd levels (end)
+                
+                # Test 
+                    simsfiltmean=apply(sims,MARGIN=c(2,3),FUN=mean)
+                    simsfiltsd=apply(sims,MARGIN=c(2,3),FUN=sd)
+                    colnames(simsfiltmean)=c("Growth","Level");rownames(simsfiltmean)=periods
+                    simsfiltdat=cbind(melt(simsfiltmean),melt(simsfiltsd)[,3])
+                    colnames(simsfiltdat)=c("periodsregationPeriod","ImpactType","MeanEffect","SDEffect")
+                    theme_set(theme_bw(base_size = 20))
+                    
+                    simsfiltdat$periodsregationPeriod <- c("Unfiltered", "3 years", "5 years", "10 years", "15 years","Unfiltered", "3 years", "5 years", "10 years", "15 years")
+                    simsfiltdat$periodsregationPeriod <- factor(simsfiltdat$periodsregationPeriod,
+                        levels = c("Unfiltered", "3 years", "5 years", "10 years", "15 years"))
+                    
+                    glimpse(simsfiltdat$periodsregationPeriod)
+                    
+                    
+                    a=ggplot(simsfiltdat,aes(x=factor(periodsregationPeriod),y=MeanEffect*100,col=ImpactType,group=ImpactType))+geom_line(lwd=1.25)
+                    a=a+geom_point(size=4)+geom_errorbar(aes(ymin=(MeanEffect-1.96*SDEffect)*100,ymax=(MeanEffect+1.96*SDEffect)*100),width=0.1,lwd=1.25)
+                    a=a+geom_hline(yintercept=0,lwd=1.5,lty=3)
+                    a=a+labs(x="Filters (minimum periodicity)",y="Estimated Growth Impact\n(% per Degree)",col="Impact Model")
+                    a=a+scale_color_manual(values=c("#d3818c","#7375a4")) + ggtitle("Impacts estimation using low pass filters") #+ ylim(-10,5)
+                    a
+                # Comparing quadratic (end)
+                
+                ggarrange(ggarrange(u_l,l_15,u_g,g_15),a,heights = c(2, 0.7),nrow=2,ncol=1)
+    ## 2.3. Perform simulation - WITH QUADRATIC TERM (end)
+
+
+    ## 2.4. Perform simulation - WITH DRIFT ADJUSTMENT (start)
+
+
+            time=350 #or 350 years
+            basegr=0.01 #2% per year baseline growth rate
+            start=100
+            baseline=rep(basegr,time)
+            coef=-0.05 #effect size - change in growth per degree warming()
+            coef2=-0.05
+            growthsd=0.005 #standard deviation of growth variability unexplained by temperature
+            periods <- c(0,10,20,50,100)
+            nsims=1000
+            sims=array(dim=c(nsims,length(periods),2))
+            sims_adjusted=array(dim=c(nsims,length(periods),2))
+            for(i in 1:nsims){
+                randomtemp=Re(randomts(gtemp))[1:time]
+                #randomtemp=Re(randomts(ustemp_lmr))[1:time]
+                randomgrowth_g=basegr #growth impact model
+                randomgrowth_l=basegr #levels impact model
+                for(j in 2:time){
+                #quadratic
+                #randomgrowth_g=c(randomgrowth_g, basegr+(randomtemp[j]*coef)+(coef2*randomtemp[j]^2)+rnorm(1,mean=0,sd=growthsd))
+                #randomgrowth_l=c(randomgrowth_l, basegr+(randomtemp[j]-randomtemp[j-1])*coef+coef2*(randomtemp[j]^2-randomtemp[j-1]^2)+rnorm(1,mean=0,sd=growthsd))
+                #linear
+                randomgrowth_g=c(randomgrowth_g, basegr+(randomtemp[j]*coef)+rnorm(1,mean=0,sd=growthsd))
+                randomgrowth_l=c(randomgrowth_l, basegr+(randomtemp[j]-randomtemp[j-1])*coef+rnorm(1,mean=0,sd=growthsd))
+                }
+                dataset=data.frame(years=1:time,temp=randomtemp,g=randomgrowth_g,l=randomgrowth_l)
+                dataset$templag =c(NA,dataset$temp[1:(dim(dataset)[1]-1)])
+                for(k in 1:length(periods)){
+                mod_g=lm(g~temp+templag,data=dataset)$coef[2]
+                mod_l=lm(l~temp+templag,data=dataset)$coef[2]
+
+                if (k==1){
+                        sims[i,k,]=c(mod_g,mod_l)
+                        sims_adjusted[i,k,]=c(mod_g,mod_l)
+                        
+                    }else{
+                    tempts <- pass.filt(randomtemp, W=periods[k], type="low", method="Butterworth")
+                    x <- seq(1:length(randomtemp))
+                    demeaned_randomtemp <- lm(randomtemp~x)$residuals
+                    demeaned_tempts <- lm(tempts~x)$residuals
+                    ratio <- median(demeaned_randomtemp/demeaned_tempts)
+                    #ratio <- median(randomtemp / tempts)
+                    #ratio <- median( abs(randomtemp) / abs(tempts))
+                    growth <- randomgrowth_g
+                    level <- randomgrowth_l
+                    filt <- data.frame(temp = unclass(tempts), growth = unclass(growth),
+                        level = unclass(level))
+                    filt$templag=c(NA,filt$temp[1:(dim(filt)[1]-1)])
+                    names(filt) <- c("temp","growth","levels","templag")
+                    mod_gfilt=lm(growth~temp,data=filt)$coef[2]
+                    mod_lfilt=lm(levels~temp,data=filt)$coef[2]
+                    sims[i,k,]=c(mod_gfilt,mod_lfilt)
+                    sims_adjusted[i,k,]=c(mod_gfilt/ratio,mod_lfilt/ratio)
+                }
+                
+
+                }
+                if(i%%50==0) print(i)
+            }
+            # Comparing quadratic
+          
+                # Test 
+                    simsfiltmean=apply(sims_adjusted,MARGIN=c(2,3),FUN=mean)
+                    simsfiltsd=apply(sims_adjusted,MARGIN=c(2,3),FUN=sd)
+                    colnames(simsfiltmean)=c("Growth","Level");rownames(simsfiltmean)=periods
+                    simsfiltdat=cbind(melt(simsfiltmean),melt(simsfiltsd)[,3])
+                    colnames(simsfiltdat)=c("periodsregationPeriod","ImpactType","MeanEffect","SDEffect")
+                    theme_set(theme_bw(base_size = 20))
+                    
+                    simsfiltdat$periodsregationPeriod <- c("Unfiltered", "10 years", "20 years", "50 years", "100 years","Unfiltered", "10 years", "20 years", "50 years", "100 years")
+                    simsfiltdat$periodsregationPeriod <- factor(simsfiltdat$periodsregationPeriod,
+                        levels = c("Unfiltered", "10 years", "20 years", "50 years", "100 years"))
+                    simsfiltdat_adjusted <- simsfiltdat
+
+                    simsfiltmean=apply(sims,MARGIN=c(2,3),FUN=mean)
+                    simsfiltsd=apply(sims,MARGIN=c(2,3),FUN=sd)
+                    colnames(simsfiltmean)=c("Growth","Level");rownames(simsfiltmean)=periods
+                    simsfiltdat=cbind(melt(simsfiltmean),melt(simsfiltsd)[,3])
+                    colnames(simsfiltdat)=c("periodsregationPeriod","ImpactType","MeanEffect","SDEffect")
+                    theme_set(theme_bw(base_size = 20))
+                    
+                    #simsfiltdat$periodsregationPeriod <- c("Unfiltered", "3 years", "5 years", "10 years", "15 years","Unfiltered", "3 years", "5 years", "10 years", "15 years")
+                    simsfiltdat$periodsregationPeriod <- c("Unfiltered", "10 years", "20 years", "50 years", "100 years","Unfiltered", "10 years", "20 years", "50 years", "100 years")
+                    simsfiltdat$periodsregationPeriod <- factor(simsfiltdat$periodsregationPeriod,
+                        levels = c("Unfiltered", "10 years", "20 years", "50 years", "100 years"))
+                    
+                    
+                    a=ggplot(simsfiltdat_adjusted,aes(x=factor(periodsregationPeriod),y=MeanEffect*100,col=ImpactType,group=ImpactType))+geom_line(lwd=1.25)
+                    a=a+geom_point(size=4)+geom_errorbar(aes(ymin=(MeanEffect-1.96*SDEffect)*100,ymax=(MeanEffect+1.96*SDEffect)*100),width=0.1,lwd=1.25)
+                    a=a+geom_hline(yintercept=0,lwd=1.5,lty=3)
+                    a=a+labs(x="Filters (minimum periodicity)",y="Estimated Growth Impact\n(% per Degree)",col="Impact Model")
+                    a=a+scale_color_manual(values=c("#d3818c","#7375a4")) + 
+                    ggtitle("Drift-Adjusted") #+ ylim(-10,5)
+                    a
+
+
+                    b=ggplot(simsfiltdat,aes(x=factor(periodsregationPeriod),y=MeanEffect*100,col=ImpactType,group=ImpactType))+geom_line(lwd=1.25)
+                    b=b+geom_point(size=4)+geom_errorbar(aes(ymin=(MeanEffect-1.96*SDEffect)*100,ymax=(MeanEffect+1.96*SDEffect)*100),width=0.1,lwd=1.25)
+                    b=b+geom_hline(yintercept=0,lwd=1.5,lty=3)
+                    b=b+labs(x="Filters (minimum periodicity)",y="Estimated Growth Impact\n(% per Degree)",col="Impact Model")
+                    b=b+scale_color_manual(values=c("#d3818c","#7375a4")) + ggtitle("Impacts estimation using low pass filters") #+ ylim(-10,5)
+                    b
+                # Comparing quadratic (end)
+                
+                ggarrange(b,a,nrow=2,ncol=1)
+    ## 2.4. Perform simulation - WITH DRIFT ADJUSTMENT (end)
+
+    #2.5. Perform Simulation using FFT (start)
+        # Useful functions (start)
+            convert.fft <- function(cs, sample.rate=1) {
+            cs <- cs / length(cs) # normalize
+
+            distance.center <- function(c)signif( Mod(c),        4)
+            angle           <- function(c)signif( 180*Arg(c)/pi, 3)
             
-            ggarrange(ggarrange(u_l,l_15,u_g,g_15),a,heights = c(2, 0.7),nrow=2,ncol=1)
-    ## 2.3. Perform simulation (end)
+            df <- data.frame(cycle    = 0:(length(cs)-1),
+                            freq     = 0:(length(cs)-1) * sample.rate / length(cs),
+                            strength = sapply(cs, distance.center),
+                            delay    = sapply(cs, angle))
+            df
+            }
+
+            get.trajectory <- function(X.k,ts,acq.freq) {
+                # returns the x.n time series for a given time sequence (ts) and
+                # a vector with the amount of frequencies k in the signal (X.k)
+                
+            N   <- length(ts)
+            i   <- complex(real = 0, imaginary = 1)
+            x.n <- rep(0,N)           # create vector to keep the trajectory
+            ks  <- 0:(length(X.k)-1)
+            
+            for(n in 0:(N-1)) {       # compute each time point x_n based on freqs X.k
+                x.n[n+1] <- sum(X.k * exp(i*2*pi*ks*n/N)) / N
+            }
+            
+            x.n * acq.freq 
+            }
+        
+            plot.harmonic <- function(Xk, i, ts, acq.freq, color="red") {
+            Xk.h <- rep(0,length(Xk))
+            Xk.h[i+1] <- Xk[i+1] # i-th harmonic
+            harmonic.trajectory <- get.trajectory(Xk.h, ts, acq.freq=acq.freq)
+            points(ts, harmonic.trajectory, type="l", col=color)
+            }
+
+            plot.frequency.spectrum <- function(X.k, xlimits=c(0,length(X.k))) {
+            plot.data  <- cbind(0:(length(X.k)-1), Mod(X.k))
+
+
+            plot.data[2:length(X.k),2] <- 2*plot.data[2:length(X.k),2] 
+            
+            plot(plot.data, t="h", lwd=2, main="", 
+                xlab="Frequency (Hz)", ylab="Strength", 
+                xlim=xlimits, ylim=c(0,max(Mod(plot.data[,2]))))
+            }
+
+            plot.show <- function(trajectory, time=1, harmonics=-1, plot.freq=FALSE) {
+
+            acq.freq <- length(trajectory)/time      # data acquisition frequency (Hz)
+            ts  <- seq(0,time-1/acq.freq,1/acq.freq) # vector of sampling time-points (s) 
+            
+            X.k <- fft(trajectory)
+            x.n <- get.trajectory(X.k,ts, acq.freq=acq.freq) / acq.freq
+            
+            if (plot.freq)
+                plot.frequency.spectrum(X.k)
+            
+            max.y <- ceiling(1.5*max(Mod(x.n)))
+            
+            if (harmonics[1]==-1) {
+                min.y <- floor(min(Mod(x.n)))-1
+            } else {
+                min.y <- ceiling(-1.5*max(Mod(x.n)))
+            }
+            
+            plot(ts,x.n, type="l",ylim=c(min.y,max.y))
+            abline(h=min.y:max.y,v=0:time,lty=3)
+            points(ts,trajectory,pch=19,col="red")  # the data points we know
+            
+            if (harmonics[1]>-1) {
+                for(i in 0:length(harmonics)) {
+                plot.harmonic(X.k, harmonics[i], ts, acq.freq, color=i+1)
+                }
+            }
+            }
+
+            convert.fft <- function(cs, sample.rate=1) {
+            cs <- cs / length(cs) # normalize
+
+            distance.center <- function(c)signif( Mod(c),        4)
+            angle           <- function(c)signif( 180*Arg(c)/pi, 3)
+            
+            df <- data.frame(cycle    = 0:(length(cs)-1),
+                            freq     = 0:(length(cs)-1) * sample.rate / length(cs),
+                            strength = sapply(cs, distance.center),
+                            delay    = sapply(cs, angle))
+            df
+            }
+
+        # Useful Functions (end)
+
+        #Simulation FFT (start)
+            time=350 #or 350 years
+            basegr=0.01 #2% per year baseline growth rate
+            start=100
+            baseline=rep(basegr,time)
+            coef=-0.05 #effect size - change in growth per degree warming()
+            coef2=-0.05
+            growthsd=0.005 #standard deviation of growth variability unexplained by temperature
+            periods <- c(0,345,346,347,348)
+            nsims=500
+            sims=array(dim=c(nsims,length(periods),2))
+            sims_adjusted=array(dim=c(nsims,length(periods),2))
+
+            acq.freq <- 1    # data acquisition frequency (Hz)
+            ts  <- seq(0,time-1/acq.freq,1/acq.freq) # vector of sampling time-points (s) 
+      
+            for(i in 1:nsims){
+                randomtemp=Re(randomts(gtemp))[1:time]
+                #randomtemp=Re(randomts(ustemp_lmr))[1:time]
+                randomgrowth_g=basegr #growth impact model
+                randomgrowth_l=basegr #levels impact model
+                for(j in 2:time){
+                #quadratic
+                #randomgrowth_g=c(randomgrowth_g, basegr+(randomtemp[j]*coef)+(coef2*randomtemp[j]^2)+rnorm(1,mean=0,sd=growthsd))
+                #randomgrowth_l=c(randomgrowth_l, basegr+(randomtemp[j]-randomtemp[j-1])*coef+coef2*(randomtemp[j]^2-randomtemp[j-1]^2)+rnorm(1,mean=0,sd=growthsd))
+                #linear
+                randomgrowth_g=c(randomgrowth_g, basegr+(randomtemp[j]*coef)+rnorm(1,mean=0,sd=growthsd))
+                randomgrowth_l=c(randomgrowth_l, basegr+(randomtemp[j]-randomtemp[j-1])*coef+rnorm(1,mean=0,sd=growthsd))
+                }
+                dataset=data.frame(years=1:time,temp=randomtemp,g=randomgrowth_g,l=randomgrowth_l)
+                dataset$templag =c(NA,dataset$temp[1:(dim(dataset)[1]-1)])
+                for(k in 1:length(periods)){
+                mod_g=lm(g~temp+templag,data=dataset)$coef[2]
+                mod_l=lm(l~temp+templag,data=dataset)$coef[2]
+
+                if (k==1){
+                        sims[i,k,]=c(mod_g,mod_l)
+                        sims_adjusted[i,k,]=c(mod_g,mod_l)
+                        
+                    }else{
+                        range <- length(randomtemp) - periods[k]
+                        X.temp <- fft(randomtemp)
+                        Xtemp.h <- rep(0,length(X.temp))
+                        #Xtemp.h[(k+1)] <- X.temp[(k+1)] #  i-th harmonic
+                        Xtemp.h[1:range] <- X.temp[1:range] # up to range-th harmonic
+                        tempts <- Re(get.trajectory(Xtemp.h, ts, acq.freq))
+
+                        X.g <- fft(randomgrowth_g)
+                        Xg.h <- rep(0,length(X.g))
+                        Xg.h[1:range] <- X.g[1:range] # up to i-th harmonic
+                        growth <- Re(get.trajectory(Xg.h, ts, acq.freq))
+
+                        X.l <- fft(randomgrowth_l)
+                        Xl.h <- rep(0,length(X.l))
+                        Xl.h[1:range] <- X.l[1:range] # up to i-th harmonic
+                        level <- Re(get.trajectory(Xl.h, ts, acq.freq))
+
+                        filt <- data.frame(temp = unclass(tempts), growth = unclass(growth),
+                        level = unclass(level))
+                        filt$templag=c(NA,filt$temp[1:(dim(filt)[1]-1)])
+                        names(filt) <- c("temp","growth","levels","templag")
+                        mod_gfilt=lm(growth~temp,data=filt)$coef[2]
+                        mod_lfilt=lm(levels~temp,data=filt)$coef[2]
+                        sims[i,k,]=c(mod_gfilt,mod_lfilt)
+                }
+                
+
+                }
+                if(i%%50==0) print(i)
+            }
+        # Simulaiton FFT (end)
+        
+        #Plot Test
+            simsfiltmean=apply(sims,MARGIN=c(2,3),FUN=mean)
+            simsfiltsd=apply(sims,MARGIN=c(2,3),FUN=sd)
+            colnames(simsfiltmean)=c("Growth","Level");rownames(simsfiltmean)=periods
+            simsfiltdat=cbind(melt(simsfiltmean),melt(simsfiltsd)[,3])
+            colnames(simsfiltdat)=c("periodsregationPeriod","ImpactType","MeanEffect","SDEffect")
+            theme_set(theme_bw(base_size = 20))
+            
+            simsfiltdat$periodsregationPeriod <- c("Unfiltered", "3 years", "5 years", "10 years", "15 years","Unfiltered", "3 years", "5 years", "10 years", "15 years")
+            simsfiltdat$periodsregationPeriod <- factor(simsfiltdat$periodsregationPeriod,
+                levels = c("Unfiltered", "3 years", "5 years", "10 years", "15 years"))
+            
+            glimpse(simsfiltdat$periodsregationPeriod)
+            
+            
+            a=ggplot(simsfiltdat,aes(x=factor(periodsregationPeriod),y=MeanEffect*100,col=ImpactType,group=ImpactType))+geom_line(lwd=1.25)
+            a=a+geom_point(size=4)+geom_errorbar(aes(ymin=(MeanEffect-1.96*SDEffect)*100,ymax=(MeanEffect+1.96*SDEffect)*100),width=0.1,lwd=1.25)
+            a=a+geom_hline(yintercept=0,lwd=1.5,lty=3)
+            a=a+labs(x="Filters (minimum periodicity)",y="Estimated Growth Impact\n(% per Degree)",col="Impact Model")
+            a=a+scale_color_manual(values=c("#d3818c","#7375a4")) + ggtitle("Impacts estimation using low pass filters") #+ ylim(-10,5)
+            a
+        #Plot Test
+    #2.5 Perform simulation using FFT (end)
 
     
 ## 2. Simulation - Figures 1 and 2 (end)
@@ -488,16 +788,23 @@
                     mt <- lm(temp~year, data = dat)
                     meanT <- mean(dat$temp, na.rm = TRUE)
                     t <- resid(mt)    
-                    t <- interpNA(t, method = "linear")
-                    t <- removeNA(t)
+                    t <- timeSeries::interpNA(t, method = "linear")
+                    t <- timeSeries::removeNA(t)
                     if(sum(complete.cases(t))<(2*(periods[k]+3))){
                             #print(paste(countries[i],i,"not enough data for this filter"))
                             next}
                     if(k==1){
                         tempts <- t
+                        ratio <- 1
                     } else{
                     tempts <- pass.filt(t, W=periods[k], type="low", method="Butterworth")
+                    x <- seq(1:length(tempts))
+                    demeaned_t <- lm(t~x)$residuals
+                    demeaned_tempts <- lm(tempts~x)$residuals
+                    ratio <- median(demeaned_t/demeaned_tempts)
+                     
                     }
+                     
                     temp <- data.frame(year = 1:length(tempts), temp= unclass(tempts))
                     if(sum(complete.cases(temp))<4){next}
                     mp <- lm(preci~year, data = dat)
@@ -533,8 +840,8 @@
                     filterdata$filter <- rep(paste(periods[k],sep="-"),dim(filterdata)[1])
                     filterdata$meant <- rep(meanT,dim(filterdata)[1])
                     panel_data <- bind_rows(panel_data,filterdata)
-                    fullmods_filter[i,,k,jj,mm]=summary(mod_gfilterdata)$coefficients[2,1:2]
-                    fullmods_filter_p[i,,k,jj,mm]=summary(mod_gfilterdata)$coefficients[3,1:2]}
+                    fullmods_filter[i,,k,jj,mm]=summary(mod_gfilterdata)$coefficients[2,1:2]/ratio
+                    fullmods_filter_p[i,,k,jj,mm]=summary(mod_gfilterdata)$coefficients[3,1:2]/ratio}
                     
                 
                 }
