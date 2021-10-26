@@ -455,7 +455,7 @@
             coef2=-0.05
             growthsd=0.005 #standard deviation of growth variability unexplained by temperature
             periods <- c(0,10,20,50,100)
-            nsims=1000
+            nsims=500
             sims=array(dim=c(nsims,length(periods),2))
             sims_adjusted=array(dim=c(nsims,length(periods),2))
             for(i in 1:nsims){
@@ -482,11 +482,11 @@
                         sims_adjusted[i,k,]=c(mod_g,mod_l)
                         
                     }else{
-                    tempts <- pass.filt(randomtemp, W=periods[k], type="low", method="Butterworth")
                     x <- seq(1:length(randomtemp))
-                    demeaned_randomtemp <- lm(randomtemp~x)$residuals
-                    demeaned_tempts <- lm(tempts~x)$residuals
-                    ratio <- median(demeaned_randomtemp/demeaned_tempts)
+                    randomtemp <- lm(randomtemp~x)$residuals
+                    tempts <- pass.filt(randomtemp, W=periods[k], type="low", method="Butterworth")
+                    
+                    ratio <- median(randomtemp/tempts)
                     #ratio <- median(randomtemp / tempts)
                     #ratio <- median( abs(randomtemp) / abs(tempts))
                     growth <- randomgrowth_g
@@ -799,8 +799,8 @@
                     } else{
                     tempts <- pass.filt(t, W=periods[k], type="low", method="Butterworth")
                     x <- seq(1:length(tempts))
-                    demeaned_t <- lm(t~x)$residuals
-                    demeaned_tempts <- lm(tempts~x)$residuals
+                    #demeaned_t <- lm(t~x)$residuals
+                    #demeaned_tempts <- lm(tempts~x)$residuals
                     ratio <- median(demeaned_t/demeaned_tempts)
                      
                     }
@@ -999,148 +999,323 @@
             }
         # sign of low freq (start)
 
-        fmod_fft$high95 <- fmod_fft$Estimate + fmod_fft$StandardError*1.64
-        fmod_fft$low95 <- fmod_fft$Estimate - fmod_fft$StandardError*1.64
-        uncertain <- c(which(fmod_fft$high95>0 & fmod_fft$low95 <0))
-        positive_Constant <- 0
-        positive_Intensifying <- 0
-        positive_Converging <- 0
-        fmod_fft$absestimate <- abs(fmod_fft$Estimate)
-        for (i in 1:numcountries){
-                    if(is.null(fmod_fft$absestimate[1+5*(i-1)] )){next}
-                    if(!is.na(fmod_fft$absestimate[5+5*(i-1)])){
-                        lastfreq <- 5
-                        }else if(!is.na(fmod_fft$absestimate[4+5*(i-1)])){
-                            lastfreq <- 4
-                        }else if(!is.na(fmod_fft$absestimate[3+5*(i-1)])){
-                            lastfreq <- 3
-                        }else if(!is.na(fmod_fft$absestimate[2+5*(i-1)])){
-                            lastfreq <- 2
-                        }else{next}
-                    if(fmod_fft$absestimate[1+5*(i-1)]>0){ #all because absolute value
-                        if(fmod_fft$absestimate[lastfreq+5*(i-1)]>0){ #all because using abs value
-                            if((fmod_fft$absestimate[lastfreq+5*(i-1)] )>(fmod_fft$absestimate[1+5*(i-1)] /2)){ #larger than half the first estimate
-                                if((fmod_fft$absestimate[lastfreq+5*(i-1)] )>(fmod_fft$absestimate[1+5*(i-1)] *1.5)){
-                                    positive_Intensifying <- c(positive_Intensifying,(1+5*(i-1)):(5+5*(i-1)))
-                                } else{
-                                    if((fmod_fft$Estimate[lastfreq+5*(i-1)]*fmod_fft$Estimate[1+5*(i-1)])<0){
-                                        positive_Converging <- c(positive_Converging,(1+5*(i-1)):(5+5*(i-1)))
-                                    } else{
-                                    #same sign? if not, is decreasinfg, else:
-                                    positive_Constant <- c(positive_Constant,(1+5*(i-1)):(5+5*(i-1)))}} }
-                                    else{
-                                        positive_Converging <- c(positive_Converging,(1+5*(i-1)):(5+5*(i-1)))
-                                    }}}}
-            fmod_fft$significant <- 1
-            fmod_fft$significant[uncertain]<- 0
-            #is the lowest frequency estimate significant?
+        # Original Categorization (start)
+            fmod_fft$high95 <- fmod_fft$Estimate + fmod_fft$StandardError*1.64
+            fmod_fft$low95 <- fmod_fft$Estimate - fmod_fft$StandardError*1.64
+            uncertain <- c(which(fmod_fft$high95>0 & fmod_fft$low95 <0))
+            positive_Constant <- 0
+            positive_Intensifying <- 0
+            positive_Converging <- 0
+            fmod_fft$absestimate <- abs(fmod_fft$Estimate)
             for (i in 1:numcountries){
-                if(!is.na(fmod_fft$absestimate[5+5*(i-1)])){
-                        lastfreq <- 5
-                        }else if(!is.na(fmod_fft$absestimate[4+5*(i-1)])){
-                            lastfreq <- 4
-                        }else if(!is.na(fmod_fft$absestimate[3+5*(i-1)])){
-                            lastfreq <- 3
-                        }else if(!is.na(fmod_fft$absestimate[2+5*(i-1)])){
-                            lastfreq <- 2
-                        }else{next}
-                if((lastfreq+5*(i-1)) %in% uncertain){ 
-                    fmod_fft$significant[1+5*(i-1)] <- 0
-                    fmod_fft$significant[2+5*(i-1)] <- 0
-                    fmod_fft$significant[3+5*(i-1)] <- 0
-                    fmod_fft$significant[4+5*(i-1)] <- 0
-                    fmod_fft$significant[5+5*(i-1)] <- 0
-                } else {
-                    fmod_fft$significant[1+5*(i-1)] <- 1
-                    fmod_fft$significant[2+5*(i-1)] <- 1
-                    fmod_fft$significant[3+5*(i-1)] <- 1
-                    fmod_fft$significant[4+5*(i-1)] <- 1
-                    fmod_fft$significant[5+5*(i-1)] <- 1
+                        if(is.null(fmod_fft$absestimate[1+5*(i-1)] )){next}
+                        if(!is.na(fmod_fft$absestimate[5+5*(i-1)])){
+                            lastfreq <- 5
+                            }else if(!is.na(fmod_fft$absestimate[4+5*(i-1)])){
+                                lastfreq <- 4
+                            }else if(!is.na(fmod_fft$absestimate[3+5*(i-1)])){
+                                lastfreq <- 3
+                            }else if(!is.na(fmod_fft$absestimate[2+5*(i-1)])){
+                                lastfreq <- 2
+                            }else{next}
+                        if(fmod_fft$absestimate[1+5*(i-1)]>0){ #all because absolute value
+                            if(fmod_fft$absestimate[lastfreq+5*(i-1)]>0){ #all because using abs value
+                                if((fmod_fft$absestimate[lastfreq+5*(i-1)] )>(fmod_fft$absestimate[1+5*(i-1)] /2)){ #larger than half the first estimate
+                                    if((fmod_fft$absestimate[lastfreq+5*(i-1)] )>(fmod_fft$absestimate[1+5*(i-1)] *1.5)){
+                                        positive_Intensifying <- c(positive_Intensifying,(1+5*(i-1)):(5+5*(i-1)))
+                                    } else{
+                                        if((fmod_fft$Estimate[lastfreq+5*(i-1)]*fmod_fft$Estimate[1+5*(i-1)])<0){
+                                            positive_Converging <- c(positive_Converging,(1+5*(i-1)):(5+5*(i-1)))
+                                        } else{
+                                        #same sign? if not, is decreasinfg, else:
+                                        positive_Constant <- c(positive_Constant,(1+5*(i-1)):(5+5*(i-1)))}} }
+                                        else{
+                                            positive_Converging <- c(positive_Converging,(1+5*(i-1)):(5+5*(i-1)))
+                                        }}}}
+                fmod_fft$significant <- 1
+                fmod_fft$significant[uncertain]<- 0
+                #is the lowest frequency estimate significant?
+                for (i in 1:numcountries){
+                    if(!is.na(fmod_fft$absestimate[5+5*(i-1)])){
+                            lastfreq <- 5
+                            }else if(!is.na(fmod_fft$absestimate[4+5*(i-1)])){
+                                lastfreq <- 4
+                            }else if(!is.na(fmod_fft$absestimate[3+5*(i-1)])){
+                                lastfreq <- 3
+                            }else if(!is.na(fmod_fft$absestimate[2+5*(i-1)])){
+                                lastfreq <- 2
+                            }else{next}
+                    if((lastfreq+5*(i-1)) %in% uncertain){ 
+                        fmod_fft$significant[1+5*(i-1)] <- 0
+                        fmod_fft$significant[2+5*(i-1)] <- 0
+                        fmod_fft$significant[3+5*(i-1)] <- 0
+                        fmod_fft$significant[4+5*(i-1)] <- 0
+                        fmod_fft$significant[5+5*(i-1)] <- 0
+                    } else {
+                        fmod_fft$significant[1+5*(i-1)] <- 1
+                        fmod_fft$significant[2+5*(i-1)] <- 1
+                        fmod_fft$significant[3+5*(i-1)] <- 1
+                        fmod_fft$significant[4+5*(i-1)] <- 1
+                        fmod_fft$significant[5+5*(i-1)] <- 1
+                    }
                 }
-            }
-            filt_names <- c("Unfiltered","3 years","5 years", "10 years", "15 years")
-            #filt_names <- c("Unfiltered","10 years","15 years", "20 years", "25 years") #uncomment to get supp Fig 2
-            fmod_fft$filters <- rep(filt_names,217)
-            fmod_fft$filters <- factor(fmod_fft$filters, levels = filt_names)            
-            fmod_fft$category <-"other"
-            fmod_fft$category[positive_Constant] <- "Constant"
-            fmod_fft$category[positive_Intensifying] <- "Intensifying"
-            fmod_fft$category[positive_Converging] <- "Converging"
-            
-
-            fpc <- fmod_fft[positive_Constant,]
-            fpi <- fmod_fft[positive_Intensifying,]
-            fpd <- fmod_fft[positive_Converging,]
-            fpo <- fmod_fft[fmod_fft$category=="other",] #no estimates
+                filt_names <- c("Unfiltered","3 years","5 years", "10 years", "15 years")
+                #filt_names <- c("Unfiltered","10 years","15 years", "20 years", "25 years") #uncomment to get supp Fig 2
+                fmod_fft$filters <- rep(filt_names,217)
+                fmod_fft$filters <- factor(fmod_fft$filters, levels = filt_names)            
+                fmod_fft$category <-"other"
+                fmod_fft$category[positive_Constant] <- "Constant"
+                fmod_fft$category[positive_Intensifying] <- "Intensifying"
+                fmod_fft$category[positive_Converging] <- "Converging"
                 
-            #Removing outliers
-            fpi <- fpi[fpi$countrycode!="SSD",]
-            fpi <- fpi[fpi$countrycode!="GNQ",]
-            fpc <- fpc[fpc$countrycode!="LBY",]
-            
-            # Figure 3 (start)
-                plot_fpi <- ggplot(data=fpi,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
-                geom_line()+
-                scale_colour_discrete(guide = 'none') +
-                theme_bw()+
-                geom_hline(yintercept=0,lty=2)+
-                geom_dl(data=fpi[fpi$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
-                labs(title="Intensifying")  + xlab("") + ylab("Estimated Effect of \n 1 Degree Warming on Growth (pp)") +
-                theme(axis.line = element_line(colour = "black"),
-                panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank(),
-                panel.border = element_blank(),
-                panel.background = element_blank()) 
 
-
-
+                fpc <- fmod_fft[positive_Constant,]
+                fpi <- fmod_fft[positive_Intensifying,]
+                fpd <- fmod_fft[positive_Converging,]
+                fpo <- fmod_fft[fmod_fft$category=="other",] #no estimates
+                    
+                #Removing outliers
+                fpi <- fpi[fpi$countrycode!="SSD",]
+                fpi <- fpi[fpi$countrycode!="SLE",]
+                fpi <- fpi[fpi$countrycode!="GNQ",]
+                #fpc <- fpc[fpc$countrycode!="LBY",]
+                fpi <- fpi[fpi$countrycode!="KOR",]
+                fpi <- fpi[fpi$countrycode!=fpi$countrycode[which(fpi$Estimate==min(fpi$Estimate,na.rm=TRUE))],]
                 
-                plot_fpc <- ggplot(data=fpc,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
-                geom_line()+
-                scale_colour_discrete(name="Low-frequency estimate significantly different from zero") +
-                theme_bw()+
-                geom_hline(yintercept=0,lty=2)+
-                geom_dl(data=fpc[fpc$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
-                labs(title="Constant")  + xlab("Minimum Periodicity after Filtering") + ylab("") +
-                theme(axis.line = element_line(colour = "black"),
-                panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank(),
-                panel.border = element_blank(),
-                panel.background = element_blank()) 
+                # Figure 3 (start)
+                    plot_fpi <- ggplot(data=fpi,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
+                    geom_line()+
+                    scale_colour_discrete(guide = 'none') +
+                    theme_bw()+
+                    geom_hline(yintercept=0,lty=2)+
+                    geom_dl(data=fpi[fpi$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
+                    labs(title="Intensifying")  + xlab("") + ylab("Estimated Effect of \n 1 Degree Warming on Growth (pp)") +
+                    theme(axis.line = element_line(colour = "black"),
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    panel.border = element_blank(),
+                    panel.background = element_blank()) 
 
 
 
-                fpd <- fpd[fpd$countrycode!="LBY",]
-                plot_fpd <-ggplot(data=fpd,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
-                geom_line()+
-                scale_colour_discrete(guide = 'none') +
-                theme_bw()+
-                geom_hline(yintercept=0,lty=2)+
-                geom_dl(data=fpd[fpd$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
-                labs(title="Converging")  + xlab("") + ylab("")+
-                theme(axis.line = element_line(colour = "black"),
-                panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank(),
-                panel.border = element_blank(),
-                panel.background = element_blank()) 
+                    
+                    plot_fpc <- ggplot(data=fpc,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
+                    geom_line()+
+                    scale_colour_discrete(name="Low-frequency estimate significantly different from zero") +
+                    theme_bw()+
+                    geom_hline(yintercept=0,lty=2)+
+                    geom_dl(data=fpc[fpc$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
+                    labs(title="Constant")  + xlab("Minimum Periodicity after Filtering") + ylab("") +
+                    theme(axis.line = element_line(colour = "black"),
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    panel.border = element_blank(),
+                    panel.background = element_blank()) 
 
-                d <- ggarrange(plot_fpi,plot_fpc,plot_fpd,ncol=3,common.legend=TRUE) 
-                d
-                table(fmod_fft$category)/5
-                #ggsave('Fig3_cat.png',dpi=500) 
+
+
+                    #fpd <- fpd[fpd$countrycode!="LBY",]
+                    plot_fpd <-ggplot(data=fpd,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
+                    geom_line()+
+                    scale_colour_discrete(guide = 'none') +
+                    theme_bw()+
+                    geom_hline(yintercept=0,lty=2)+
+                    geom_dl(data=fpd[fpd$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
+                    labs(title="Converging")  + xlab("") + ylab("")+
+                    theme(axis.line = element_line(colour = "black"),
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    panel.border = element_blank(),
+                    panel.background = element_blank()) 
+
+                    d <- ggarrange(plot_fpi,plot_fpc,plot_fpd,ncol=3,common.legend=TRUE) 
+                    d
+                    table(fmod_fft$category)/5
+                    #ggsave('Fig3_cat.png',dpi=500) 
+                    
+                # Figure 3 (start)
+
+                #Plotting some outliers 
+                    lby <- ggplot(data=wb[wb$c
+                    ountrycode=="LBY",], aes(x=year, y=growth))+geom_line()+theme_bw()+ggtitle("Economic growth in Libya") #ilitary intervention in 2011
+                    gnq <- ggplot(data=wb[wb$countrycode=="GNQ",], aes(x=year, y=growth))+geom_line()+theme_bw()+ggtitle("Economic growth in Equatorial Guinea") #In 1995 Mobil discovered oil in Guinea
+                    ssd <- ggplot(data=wb[wb$countrycode=="SSD",], aes(x=year, y=growth))+
+                    geom_line()+theme_bw()+ggtitle("Economic growth in South Sudan") #In 1995 Mobil discovered oil in Guinea              
+                    ukr <- ggplot(data=wb[wb$countrycode=="UKR",], aes(x=year, y=growth))+
+                    geom_line()+theme_bw()+ggtitle("Economic growth in Ukraine") #In 1995 Mobil discovered oil in Guinea
+                    ggarrange(d,ggarrange(gnq,lby,ncol=2),nrow=2)
+                    #ggsave('Fig_pathways_outliers.png',dpi=500) #Figure 3
+        #Original Categorization (end)
+
+        # Categorizing significant intensifying (start)
+                fmod_fft$high95 <- fmod_fft$Estimate + fmod_fft$StandardError*1.64
+                fmod_fft$low95 <- fmod_fft$Estimate - fmod_fft$StandardError*1.64
+                fmod_fft$absestimate <- abs(fmod_fft$Estimate)
+                fmod_fft$significant <- 0
+                levels_effect <- 0
+                growth_constant <- 0
+                growth_intensifying <- 0              
+                uncertain <- c(which(fmod_fft$high95>0 & fmod_fft$low95 <0))
+                `%notin%` <- Negate(`%in%`)
+                for (i in 1:numcountries){
+                    if(!is.na(fmod_fft$absestimate[5+5*(i-1)])){
+                            lastfreq <- 5
+                            }else if(!is.na(fmod_fft$absestimate[4+5*(i-1)])){
+                                lastfreq <- 4
+                            }else if(!is.na(fmod_fft$absestimate[3+5*(i-1)])){
+                                lastfreq <- 3
+                            }else if(!is.na(fmod_fft$absestimate[2+5*(i-1)])){
+                                lastfreq <- 2
+                            }else{next}
+                     if((lastfreq+5*(i-1)) %in% uncertain){
+
+                        levels <- c(levels,(1+5*(i-1)):(5+5*(i-1))) 
+                        if((1+5*(i-1)) %notin% uncertain){
+                        fmod_fft$significant[1+5*(i-1)] <- 0
+                        fmod_fft$significant[2+5*(i-1)] <- 0
+                        fmod_fft$significant[3+5*(i-1)] <- 0
+                        fmod_fft$significant[4+5*(i-1)] <- 0
+                        fmod_fft$significant[5+5*(i-1)] <- 0
+                        }
+                    } else {
+                        growth <- c(growth,(1+5*(i-1)):(5+5*(i-1))) 
+                        fmod_fft$significant[1+5*(i-1)] <- 1
+                        fmod_fft$significant[2+5*(i-1)] <- 1
+                        fmod_fft$significant[3+5*(i-1)] <- 1
+                        fmod_fft$significant[4+5*(i-1)] <- 1
+                        fmod_fft$significant[5+5*(i-1)] <- 1
+                    }
+                    
+                    if (fmod_fft$high95[1+5*(i-1)] < fmod_fft$low95[lastfreq+5*(i-1)] ){
+                            fmod_fft$significant[1+5*(i-1)] <- 1
+                            fmod_fft$significant[2+5*(i-1)] <- 1
+                            fmod_fft$significant[3+5*(i-1)] <- 1
+                            fmod_fft$significant[4+5*(i-1)] <- 1
+                            fmod_fft$significant[5+5*(i-1)] <- 1
                 
-            # Figure 3 (start)
+                    }
+                    
+                }
 
-            #Plotting some outliers 
-                lby <- ggplot(data=wb[wb$c
-                ountrycode=="LBY",], aes(x=year, y=growth))+geom_line()+theme_bw()+ggtitle("Economic growth in Libya") #ilitary intervention in 2011
-                gnq <- ggplot(data=wb[wb$countrycode=="GNQ",], aes(x=year, y=growth))+geom_line()+theme_bw()+ggtitle("Economic growth in Equatorial Guinea") #In 1995 Mobil discovered oil in Guinea
-                ssd <- ggplot(data=wb[wb$countrycode=="SSD",], aes(x=year, y=growth))+
-                geom_line()+theme_bw()+ggtitle("Economic growth in South Sudan") #In 1995 Mobil discovered oil in Guinea              
-                ukr <- ggplot(data=wb[wb$countrycode=="UKR",], aes(x=year, y=growth))+
-                geom_line()+theme_bw()+ggtitle("Economic growth in Ukraine") #In 1995 Mobil discovered oil in Guinea
-                ggarrange(d,ggarrange(gnq,lby,ncol=2),nrow=2)
-                #ggsave('Fig_pathways_outliers.png',dpi=500) #Figure 3
+                uncertain <- c(which(fmod_fft$high95>0 & fmod_fft$low95 <0))
+                positive_Constant <- 0
+                positive_Intensifying <- 0
+                positive_Converging <- 0
+                fmod_fft$absestimate <- abs(fmod_fft$Estimate)
+                for (i in 1:numcountries){
+                        if(is.null(fmod_fft$absestimate[1+5*(i-1)] )){next}
+                        if(!is.na(fmod_fft$absestimate[5+5*(i-1)])){
+                            lastfreq <- 5
+                            }else if(!is.na(fmod_fft$absestimate[4+5*(i-1)])){
+                                lastfreq <- 4
+                            }else if(!is.na(fmod_fft$absestimate[3+5*(i-1)])){
+                                lastfreq <- 3
+                            }else if(!is.na(fmod_fft$absestimate[2+5*(i-1)])){
+                                lastfreq <- 2
+                            }else{next}
+                        if(fmod_fft$absestimate[1+5*(i-1)]>0){ #all because absolute value
+                            if(fmod_fft$absestimate[lastfreq+5*(i-1)]>0){ #all because using abs value
+                                if((fmod_fft$absestimate[lastfreq+5*(i-1)] )>(fmod_fft$absestimate[1+5*(i-1)] /2)){ #larger than half the first estimate
+                                    if((fmod_fft$absestimate[lastfreq+5*(i-1)] )>(fmod_fft$absestimate[1+5*(i-1)] *1.5)){
+                                        positive_Intensifying <- c(positive_Intensifying,(1+5*(i-1)):(5+5*(i-1)))
+                                    } else{
+                                        if((fmod_fft$Estimate[lastfreq+5*(i-1)]*fmod_fft$Estimate[1+5*(i-1)])<0){
+                                            positive_Converging <- c(positive_Converging,(1+5*(i-1)):(5+5*(i-1)))
+                                        } else{
+                                        #same sign? if not, is decreasinfg, else:
+                                        positive_Constant <- c(positive_Constant,(1+5*(i-1)):(5+5*(i-1)))}} }
+                                        else{
+                                            positive_Converging <- c(positive_Converging,(1+5*(i-1)):(5+5*(i-1)))
+                }}}}
+                
+                
+                filt_names <- c("Unfiltered","3 years","5 years", "10 years", "15 years")
+                #filt_names <- c("Unfiltered","10 years","15 years", "20 years", "25 years") #uncomment to get supp Fig 2
+                fmod_fft$filters <- rep(filt_names,217)
+                fmod_fft$filters <- factor(fmod_fft$filters, levels = filt_names)            
+                fmod_fft$category <-"other"
+                fmod_fft$category[positive_Constant] <- "Constant"
+                fmod_fft$category[positive_Intensifying] <- "Intensifying"
+                fmod_fft$category[positive_Converging] <- "Converging"
+                
+
+                fpc <- fmod_fft[positive_Constant,]
+                fpi <- fmod_fft[positive_Intensifying,]
+                fpd <- fmod_fft[positive_Converging,]
+                fpo <- fmod_fft[fmod_fft$category=="other",] #no estimates
+                    
+                #Removing outliers
+                fpi <- fpi[fpi$countrycode!="SSD",]
+                fpi <- fpi[fpi$countrycode!="SLE",]
+                fpi <- fpi[fpi$countrycode!="GNQ",]
+                #fpc <- fpc[fpc$countrycode!="LBY",]
+                fpi <- fpi[fpi$countrycode!="KOR",]
+                fpi <- fpi[fpi$countrycode!=fpi$countrycode[which(fpi$Estimate==min(fpi$Estimate,na.rm=TRUE))],]
+                
+                # Figure 3 (start)
+                    plot_fpi <- ggplot(data=fpi,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
+                    geom_line()+
+                    scale_colour_discrete(guide = 'none') +
+                    theme_bw()+
+                    geom_hline(yintercept=0,lty=2)+
+                    geom_dl(data=fpi[fpi$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
+                    labs(title="Intensifying")  + xlab("") + ylab("Estimated Effect of \n 1 Degree Warming on Growth (pp)") +
+                    theme(axis.line = element_line(colour = "black"),
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    panel.border = element_blank(),
+                    panel.background = element_blank()) 
+
+
+
+                    
+                    plot_fpc <- ggplot(data=fpc,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
+                    geom_line()+
+                    scale_colour_discrete(name="Low-frequency estimate significantly different from zero") +
+                    theme_bw()+
+                    geom_hline(yintercept=0,lty=2)+
+                    geom_dl(data=fpc[fpc$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
+                    labs(title="Constant")  + xlab("Minimum Periodicity after Filtering") + ylab("") +
+                    theme(axis.line = element_line(colour = "black"),
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    panel.border = element_blank(),
+                    panel.background = element_blank()) 
+
+
+
+                    #fpd <- fpd[fpd$countrycode!="LBY",]
+                    plot_fpd <-ggplot(data=fpd,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
+                    geom_line()+
+                    scale_colour_discrete(guide = 'none') +
+                    theme_bw()+
+                    geom_hline(yintercept=0,lty=2)+
+                    geom_dl(data=fpd[fpd$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
+                    labs(title="Converging")  + xlab("") + ylab("")+
+                    theme(axis.line = element_line(colour = "black"),
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    panel.border = element_blank(),
+                    panel.background = element_blank()) 
+
+                    d <- ggarrange(plot_fpi,plot_fpc,plot_fpd,ncol=3,common.legend=TRUE) 
+                    d
+                    table(fmod_fft$category)/5
+                    #ggsave('Fig3_cat.png',dpi=500) 
+                    
+                # Figure 3 (start)
+
+                #Plotting some outliers 
+                    lby <- ggplot(data=wb[wb$c
+                    ountrycode=="LBY",], aes(x=year, y=growth))+geom_line()+theme_bw()+ggtitle("Economic growth in Libya") #ilitary intervention in 2011
+                    gnq <- ggplot(data=wb[wb$countrycode=="GNQ",], aes(x=year, y=growth))+geom_line()+theme_bw()+ggtitle("Economic growth in Equatorial Guinea") #In 1995 Mobil discovered oil in Guinea
+                    ssd <- ggplot(data=wb[wb$countrycode=="SSD",], aes(x=year, y=growth))+
+                    geom_line()+theme_bw()+ggtitle("Economic growth in South Sudan") #In 1995 Mobil discovered oil in Guinea              
+                    ukr <- ggplot(data=wb[wb$countrycode=="UKR",], aes(x=year, y=growth))+
+                    geom_line()+theme_bw()+ggtitle("Economic growth in Ukraine") #In 1995 Mobil discovered oil in Guinea
+                    ggarrange(d,ggarrange(gnq,lby,ncol=2),nrow=2)
+                    #ggsave('Fig_pathways_outliers.png',dpi=500) #Figure 3
+        # Categorizing significant intensifying (end)
     ## 3.2. categorizing - Plotting Figure 3 (end) 
 
     ## 3.3. FELM abs estimate by filter - Table 1, columns 1 and 2 (start)
