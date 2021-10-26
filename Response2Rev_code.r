@@ -1152,9 +1152,8 @@
                 fmod_fft$low95 <- fmod_fft$Estimate - fmod_fft$StandardError*1.64
                 fmod_fft$absestimate <- abs(fmod_fft$Estimate)
                 fmod_fft$significant <- 0
-                levels_effect <- 0
-                growth_constant <- 0
-                growth_intensifying <- 0              
+                levels <- 0
+                growt <- 0              
                 uncertain <- c(which(fmod_fft$high95>0 & fmod_fft$low95 <0))
                 `%notin%` <- Negate(`%in%`)
                 for (i in 1:numcountries){
@@ -1170,21 +1169,16 @@
                      if((lastfreq+5*(i-1)) %in% uncertain){
 
                         levels <- c(levels,(1+5*(i-1)):(5+5*(i-1))) 
-                        if((1+5*(i-1)) %notin% uncertain){
-                        fmod_fft$significant[1+5*(i-1)] <- 0
-                        fmod_fft$significant[2+5*(i-1)] <- 0
-                        fmod_fft$significant[3+5*(i-1)] <- 0
-                        fmod_fft$significant[4+5*(i-1)] <- 0
-                        fmod_fft$significant[5+5*(i-1)] <- 0
-                        }
+                        
                     } else {
                         growth <- c(growth,(1+5*(i-1)):(5+5*(i-1))) 
-                        fmod_fft$significant[1+5*(i-1)] <- 1
-                        fmod_fft$significant[2+5*(i-1)] <- 1
-                        fmod_fft$significant[3+5*(i-1)] <- 1
-                        fmod_fft$significant[4+5*(i-1)] <- 1
-                        fmod_fft$significant[5+5*(i-1)] <- 1
+                        
                     }
+                    if((1+5*(i-1)) %notin% uncertain){
+                        fmod_fft$significant[1+5*(i-1)] <- 1     
+                                       }
+
+
                     
                     if (fmod_fft$high95[1+5*(i-1)] < fmod_fft$low95[lastfreq+5*(i-1)] ){
                             fmod_fft$significant[1+5*(i-1)] <- 1
