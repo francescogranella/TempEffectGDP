@@ -553,6 +553,121 @@
                 ggarrange(b,a,nrow=2,ncol=1)
     ## 2.4. Perform simulation - WITH DRIFT ADJUSTMENT (end)
 
+    ## 2.4. Perform simulation - Combaination Gammas and Betas (start)
+
+
+            time=350 #or 350 years
+            basegr=0.01 #2% per year baseline growth rate
+            start=100
+            baseline=rep(basegr,time)
+            coef_gamma=-0.05 #effect size - change in growth per degree warming()
+            coef_beta=-0.05
+            coef_beta2=0.05
+            coef_beta3=0.07
+            growthsd=0.005 #standard deviation of growth variability unexplained by temperature
+            periods <- c(0,3,5,10,15)
+            nsims=500
+            sims=array(dim=c(nsims,length(periods),2))
+            sims_adjusted=array(dim=c(nsims,length(periods),3))
+            for(i in 1:nsims){
+                randomtemp=Re(randomts(gtemp))[1:time]
+                #randomtemp=Re(randomts(ustemp_lmr))[1:time]
+                randomgrowth_g=basegr #growth impact model
+                randomgrowth_l=basegr #levels impact model
+                randomgrowth_l2=basegr #levels impact model
+                for(j in 2:time){
+                randomgrowth_g=c(randomgrowth_g, basegr+(randomtemp[j]*coef_gamma)+(randomtemp[j]-randomtemp[j-1])*coef_beta+rnorm(1,mean=0,sd=growthsd))
+                randomgrowth_l=c(randomgrowth_l, basegr+(randomtemp[j]*coef_gamma)+(randomtemp[j]-randomtemp[j-1])*coef_beta2+rnorm(1,mean=0,sd=growthsd))
+                randomgrowth_l2=c(randomgrowth_l2, basegr+(randomtemp[j]*coef_gamma)+(randomtemp[j]-randomtemp[j-1])*coef_beta3+rnorm(1,mean=0,sd=growthsd))
+                
+                }
+                dataset=data.frame(years=1:time,temp=randomtemp,g=randomgrowth_g,l=randomgrowth_l,l2=randomgrowth_l2)
+                dataset$templag =c(NA,dataset$temp[1:(dim(dataset)[1]-1)])
+                for(k in 1:length(periods)){
+                mod_g=lm(g~temp+templag,data=dataset)$coef[2]
+                mod_l=lm(l~temp+templag,data=dataset)$coef[2]
+                mod_l2=lm(l2~temp+templag,data=dataset)$coef[2]
+
+                if (k==1){
+                        sims[i,k,]=c(mod_g,mod_l)
+                        sims_adjusted[i,k,]=c(mod_g,mod_l,mod_l2)
+                        
+                    }else{
+                    x <- seq(1:length(randomtemp))
+                    randomtemp <- lm(randomtemp~x)$residuals
+                    tempts <- pass.filt(randomtemp, W=periods[k], type="low", method="Butterworth")
+                    
+                    ratio <- median(randomtemp/tempts)
+                    #ratio <- median(randomtemp / tempts)
+                    #ratio <- median( abs(randomtemp) / abs(tempts))
+                    growth <- randomgrowth_g
+                    level <- randomgrowth_l
+                    level2 <- randomgrowth_l2
+                    filt <- data.frame(temp = unclass(tempts), growth = unclass(growth),
+                        level = unclass(level),level2 = unclass(level2))
+                    filt$templag=c(NA,filt$temp[1:(dim(filt)[1]-1)])
+                    names(filt) <- c("temp","growth","levels","levels2","templag")
+                    mod_gfilt=lm(growth~temp,data=filt)$coef[2]
+                    mod_lfilt=lm(levels~temp,data=filt)$coef[2]
+                    mod_lfilt2=lm(levels2~temp,data=filt)$coef[2]
+                    sims[i,k,]=c(mod_gfilt,mod_lfilt)
+                    sims_adjusted[i,k,]=c(mod_gfilt/ratio,mod_lfilt/ratio,mod_lfilt2/ratio)
+                }
+                
+
+                }
+                if(i%%50==0) print(i)
+            }
+            # Comparing quadratic
+          
+                # Test 
+                    simsfiltmean=apply(sims_adjusted,MARGIN=c(2,3),FUN=mean)
+                    simsfiltsd=apply(sims_adjusted,MARGIN=c(2,3),FUN=sd)
+                    colnames(simsfiltmean)=c("Attenuating","Intensifying","Changing Sign");rownames(simsfiltmean)=periods
+                    simsfiltdat=cbind(melt(simsfiltmean),melt(simsfiltsd)[,3])
+                    colnames(simsfiltdat)=c("periodsregationPeriod","ImpactType","MeanEffect","SDEffect")
+                    theme_set(theme_bw(base_size = 20))
+                    
+                    simsfiltdat$periodsregationPeriod <- c("Unfiltered", "3 years", "5 years", "10 years", "15 years","Unfiltered", "3 years", "5 years", "10 years", "15 years","Unfiltered", "3 years", "5 years", "10 years", "15 years")
+                    simsfiltdat$periodsregationPeriod <- factor(simsfiltdat$periodsregationPeriod,
+                        levels = c("Unfiltered", "3 years", "5 years", "10 years", "15 years"))
+                    simsfiltdat_adjusted <- simsfiltdat
+
+                    # simsfiltmean=apply(sims,MARGIN=c(2,3),FUN=mean)
+                    # simsfiltsd=apply(sims,MARGIN=c(2,3),FUN=sd)
+                    # colnames(simsfiltmean)=c("Growth","Level");rownames(simsfiltmean)=periods
+                    # simsfiltdat=cbind(melt(simsfiltmean),melt(simsfiltsd)[,3])
+                    # colnames(simsfiltdat)=c("periodsregationPeriod","ImpactType","MeanEffect","SDEffect")
+                    # theme_set(theme_bw(base_size = 20))
+                    
+                    # #simsfiltdat$periodsregationPeriod <- c("Unfiltered", "3 years", "5 years", "10 years", "15 years","Unfiltered", "3 years", "5 years", "10 years", "15 years")
+                    # simsfiltdat$periodsregationPeriod <- c("Unfiltered", "10 years", "20 years", "50 years", "100 years","Unfiltered", "10 years", "20 years", "50 years", "100 years")
+                    # simsfiltdat$periodsregationPeriod <- factor(simsfiltdat$periodsregationPeriod,
+                    #     levels = c("Unfiltered", "10 years", "20 years", "50 years", "100 years"))
+                    
+                    
+                    a=ggplot(simsfiltdat_adjusted,aes(x=factor(periodsregationPeriod),y=MeanEffect*100,col=ImpactType,group=ImpactType))+geom_line(lwd=1.25)
+                    a=a+geom_point(size=4)+geom_errorbar(aes(ymin=(MeanEffect-1.96*SDEffect)*100,ymax=(MeanEffect+1.96*SDEffect)*100),width=0.1,lwd=1.25)
+                    a=a+geom_hline(yintercept=0,lwd=1.5,lty=3)
+                    a=a+labs(x="Filters (minimum periodicity)",y="Estimated Growth Impact\n(% per Degree)",col="Impact Model")
+                    a=a+scale_color_manual(values=c("#7fc97f","#beaed4","#fdc086"),
+                        labels=c(expression(paste(beta,"=-0.05; ",gamma,"=-0.05")),expression(paste(beta,"=0.05; ",gamma,"=-0.05")),expression(paste(beta,"=0.07; ",gamma,"=-0.05")))) + 
+                    ggtitle("Combined effects") #+ ylim(-10,5)
+                    a
+
+
+                    b=ggplot(simsfiltdat,aes(x=factor(periodsregationPeriod),y=MeanEffect*100,col=ImpactType,group=ImpactType))+geom_line(lwd=1.25)
+                    b=b+geom_point(size=4)+geom_errorbar(aes(ymin=(MeanEffect-1.96*SDEffect)*100,ymax=(MeanEffect+1.96*SDEffect)*100),width=0.1,lwd=1.25)
+                    b=b+geom_hline(yintercept=0,lwd=1.5,lty=3)
+                    b=b+labs(x="Filters (minimum periodicity)",y="Estimated Growth Impact\n(% per Degree)",col="Impact Model")
+                    b=b+scale_color_manual(values=c("#d3818c","#7375a4")) + ggtitle("Impacts estimation using low pass filters") #+ ylim(-10,5)
+                    b
+                # Comparing quadratic (end)
+                
+                ggarrange(b,a,nrow=2,ncol=1)
+    ## 2.4. Perform simulation - WITH DRIFT ADJUSTMENT (end)
+
+    
     #2.5. Perform Simulation using FFT (start)
         # Useful functions (start)
             convert.fft <- function(cs, sample.rate=1) {
@@ -754,6 +869,7 @@
         periods <- c(0,3,5,10,15)
         #periods <- c(0,10,20,25,27) Uncomment to get Supp Fig 2
         fullmods_filter=array(dim=c(length(countries),2,length(periods),length(dataset),length(datasetweather)))
+        fullmods_filter_var=array(dim=c(length(countries),2,length(periods),length(dataset),length(datasetweather)))
         fullmods_filter_p=array(dim=c(length(countries),2,length(periods),length(dataset),length(datasetweather)))
         panel_data <- data.frame(years = integer(),temp = double(), growth = double(), 
             preci = double(), countrycode = factor(), climdata = character(),
@@ -785,7 +901,7 @@
                             next
                     }
                     names(dat) <- c("countrycode","year","growth","temp","preci")
-                    mt <- lm(temp~year, data = dat)
+                    mt <- lm(temp~year+I(year^2), data = dat)
                     meanT <- mean(dat$temp, na.rm = TRUE)
                     t <- resid(mt)    
                     t <- timeSeries::interpNA(t, method = "linear")
@@ -807,7 +923,7 @@
                      
                     temp <- data.frame(year = 1:length(tempts), temp= unclass(tempts))
                     if(sum(complete.cases(temp))<4){next}
-                    mp <- lm(preci~year, data = dat)
+                    mp <- lm(preci~year+I(year^2), data = dat)
                     p <- resid(mp)
                     p <- interpNA(p, method = "linear")
                     p <- removeNA(p)
@@ -817,7 +933,7 @@
                     precits <- pass.filt(p, W=periods[k], type="low", method="Butterworth")
                     }
                     preci <- data.frame(year = 1:length(precits), preci= unclass(precits))
-                    mg <- lm(growth~year, data = dat)
+                    mg <- lm(growth~year+I(year^2), data = dat)
                     g <- resid(mg)
                     g <- interpNA(g, method = "linear")
                     g <- removeNA(g)
@@ -840,8 +956,10 @@
                     filterdata$filter <- rep(paste(periods[k],sep="-"),dim(filterdata)[1])
                     filterdata$meant <- rep(meanT,dim(filterdata)[1])
                     panel_data <- bind_rows(panel_data,filterdata)
-                    fullmods_filter[i,,k,jj,mm]=summary(mod_gfilterdata)$coefficients[2,1:2]/ratio
-                    fullmods_filter_p[i,,k,jj,mm]=summary(mod_gfilterdata)$coefficients[3,1:2]/ratio}
+                    fullmods_filter[i,,k,jj,mm]=c(summary(mod_gfilterdata)$coefficients[2,1:2]/ratio)
+                    fullmods_filter_var[i,,k,jj,mm]=c(summary(mod_gfilterdata)$coefficients[2,1]/ratio,vcov(mod_gfilterdata)[2,2]/(ratio^2))
+                    fullmods_filter_p[i,,k,jj,mm]=summary(mod_gfilterdata)$coefficients[3,1:2] #If usd should be divided by the ratio of precipietation timeseries
+                    }
                     
                 
                 }
@@ -870,6 +988,15 @@
         fullmods_filter$Estimate[which(is.infinite(fullmods_filter$StandardError))]=NA
         names(fullmods_filter) <- c("countrycode","frequencies","econdata","climdata","Estimate","StandardError")
 
+
+        dimnames(fullmods_filter_var)=list(countries,c("Estimate","Var"),ranges,dataset,datasetweather)
+        fullmods_filterm <- melt(fullmods_filter_var)
+        fullmods_filterm$Var1 <- names2
+        fullmods_filter_v=dcast(fullmods_filterm,Var1+Var3+Var4+Var5~Var2, fun = mean)
+        fullmods_filter_v$Estimate[which(is.infinite(fullmods_filter_v$Var))]=NA
+        names(fullmods_filter_v) <- c("countrycode","frequencies","econdata","climdata","Estimate","Variance")
+
+
     ## 3.1. Country-level regressions (end)
         
     ## 3.1b Panel Regression (start)
@@ -879,8 +1006,9 @@
         xmat <- cbind(1, 2*x)
             
         p1 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="0"),]
-        felm_panel1 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p1)
+        felm_panel1 <- felm(growth ~ temp+I(temp^2)+preci+I(preci^2)+years+I(years^2)|countrycode|0|countrycode, data =p1)
         # Getting marginal effect of an additional degree (start)
+            #summary(felm_panel1)
             model <- felm_panel1
             Sigma <- vcov(model)
             sigma = Sigma[c(start1:end1),c(start1:end1)]
@@ -893,7 +1021,7 @@
         # Getting marginal effect of an additional degree (start)
             
         p2 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="3"),]
-        felm_panel2 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p2)
+        felm_panel2 <- felm(growth ~ temp+I(temp^2)+preci+I(preci^2)+years+I(years^2)|countrycode|0|countrycode, data =p2)
         # Getting marginal effect of an additional degree (start)
             model <- felm_panel2
             Sigma <- vcov(model)
@@ -907,7 +1035,7 @@
         # Getting marginal effect of an additional degree (start)
          
         p3 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="5"),]
-        felm_panel3 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p3)
+        felm_panel3 <- felm(growth ~ temp+I(temp^2)+preci+I(preci^2)+years+I(years^2)|countrycode|0|countrycode, data =p3)
         # Getting marginal effect of an additional degree (start)
             model <- felm_panel3
             Sigma <- vcov(model)
@@ -921,7 +1049,7 @@
         # Getting marginal effect of an additional degree (start)
          
         p4 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="10"),]
-        felm_panel4 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p4)
+        felm_panel4 <- felm(growth ~ temp+I(temp^2)+preci+I(preci^2)+years+I(years^2)|countrycode|0|countrycode, data =p4)
         # Getting marginal effect of an additional degree (start)
             model <- felm_panel4
             Sigma <- vcov(model)
@@ -935,7 +1063,7 @@
         # Getting marginal effect of an additional degree (start)
          
         p5 <- panel_data[which(panel_data$climdata=="UDel" & panel_data$econdata=="wb"  & panel_data$filter=="15"),]
-        felm_panel5 <- felm(growth ~ temp+I(temp^2)|countrycode|0|countrycode, data =p5)
+        felm_panel5 <- felm(growth ~ temp+I(temp^2)+preci+I(preci^2)+years+I(years^2)|countrycode|0|countrycode, data =p5)
         # Getting marginal effect of an additional degree (start)
             model <- felm_panel5
             Sigma <- vcov(model)
@@ -955,51 +1083,9 @@
 
     ## 3.2. categorizing - Plotting Figure 3  (start)
 
-        # sign of low freq (start)
-            fmod_fft <- fullmods_filter
-            fmod_fft <- fmod_fft[fmod_fft$econdata=="wb",]
-            fmod_fft <- fmod_fft[fmod_fft$climdata=="UDel",]
-            fmod_fft$sign <- rep(0,dim(fmod_fft)[1])
-            numcountries <- dim(fmod_fft)[1]/5
-            for (i in 1:numcountries){
-                if(is.null(fmod_fft$Estimate[1+5*(i-1)] )){next}
-                if(!is.na(fmod_fft$Estimate[5+5*(i-1)])){
-                    lastfreq <- 5
-                    }else if(!is.na(fmod_fft$Estimate[4+5*(i-1)])){
-                        lastfreq <- 4
-                    }else if(!is.na(fmod_fft$Estimate[3+5*(i-1)])){
-                        lastfreq <- 3
-                    }else if(!is.na(fmod_fft$Estimate[2+5*(i-1)])){
-                        lastfreq <- 2
-                    }else{next}
-                m <- fmod_fft$Estimate[1+5*(i-1)] * fmod_fft$Estimate[lastfreq+5*(i-1)]
-                if (is.na(m)){next}
-                if(m>0 ){
-                    fmod_fft$sign[(1+5*(i-1)):(5+5*(i-1))]=1
-                    }
-            }
-            fmod_fft$signlofreq <- rep("negative",dim(fmod_fft)[1])
+        
 
-            for (i in 1:numcountries){
-                if(is.null(fmod_fft$Estimate[1+5*(i-1)] )){next}
-                if(!is.na(fmod_fft$Estimate[5+5*(i-1)])){
-                    lastfreq <- 5
-                    }else if(!is.na(fmod_fft$Estimate[4+5*(i-1)])){
-                        lastfreq <- 4
-                    }else if(!is.na(fmod_fft$Estimate[3+5*(i-1)])){
-                        lastfreq <- 3
-                    }else if(!is.na(fmod_fft$Estimate[2+5*(i-1)])){
-                        lastfreq <- 2
-                    }else{next}
-                m <- fmod_fft$Estimate[lastfreq+5*(i-1)]
-                if (is.na(m)){next}
-                if(m>0 ){
-                    fmod_fft$signlofreq[(1+5*(i-1)):(5+5*(i-1))]="positive"
-                    }
-            }
-        # sign of low freq (start)
-
-        # Original Categorization (start)
+        #   Original Categorization (start)
             fmod_fft$high95 <- fmod_fft$Estimate + fmod_fft$StandardError*1.64
             fmod_fft$low95 <- fmod_fft$Estimate - fmod_fft$StandardError*1.64
             uncertain <- c(which(fmod_fft$high95>0 & fmod_fft$low95 <0))
@@ -1145,15 +1231,18 @@
                     geom_line()+theme_bw()+ggtitle("Economic growth in Ukraine") #In 1995 Mobil discovered oil in Guinea
                     ggarrange(d,ggarrange(gnq,lby,ncol=2),nrow=2)
                     #ggsave('Fig_pathways_outliers.png',dpi=500) #Figure 3
-        #Original Categorization (end)
+        #   Original Categorization (end)
 
         # Categorizing significant intensifying (start)
+            fmod_fft <- fullmods_filter
+            fmod_fft <- fmod_fft[fmod_fft$econdata=="wb",]
+            fmod_fft <- fmod_fft[fmod_fft$climdata=="UDel",]
                 fmod_fft$high95 <- fmod_fft$Estimate + fmod_fft$StandardError*1.64
                 fmod_fft$low95 <- fmod_fft$Estimate - fmod_fft$StandardError*1.64
                 fmod_fft$absestimate <- abs(fmod_fft$Estimate)
                 fmod_fft$significant <- 0
                 levels <- 0
-                growt <- 0              
+                growth <- 0              
                 uncertain <- c(which(fmod_fft$high95>0 & fmod_fft$low95 <0))
                 `%notin%` <- Negate(`%in%`)
                 for (i in 1:numcountries){
@@ -1170,106 +1259,60 @@
 
                         levels <- c(levels,(1+5*(i-1)):(5+5*(i-1))) 
                         
-                    } else {
+                    } else if((lastfreq+5*(i-1)) %notin% uncertain) {
                         growth <- c(growth,(1+5*(i-1)):(5+5*(i-1))) 
                         
                     }
                     if((1+5*(i-1)) %notin% uncertain){
-                        fmod_fft$significant[1+5*(i-1)] <- 1     
-                                       }
-
-
-                    
-                    if (fmod_fft$high95[1+5*(i-1)] < fmod_fft$low95[lastfreq+5*(i-1)] ){
-                            fmod_fft$significant[1+5*(i-1)] <- 1
-                            fmod_fft$significant[2+5*(i-1)] <- 1
-                            fmod_fft$significant[3+5*(i-1)] <- 1
-                            fmod_fft$significant[4+5*(i-1)] <- 1
-                            fmod_fft$significant[5+5*(i-1)] <- 1
-                
-                    }
-                    
-                }
-
-                uncertain <- c(which(fmod_fft$high95>0 & fmod_fft$low95 <0))
-                positive_Constant <- 0
-                positive_Intensifying <- 0
-                positive_Converging <- 0
-                fmod_fft$absestimate <- abs(fmod_fft$Estimate)
-                for (i in 1:numcountries){
-                        if(is.null(fmod_fft$absestimate[1+5*(i-1)] )){next}
-                        if(!is.na(fmod_fft$absestimate[5+5*(i-1)])){
-                            lastfreq <- 5
-                            }else if(!is.na(fmod_fft$absestimate[4+5*(i-1)])){
-                                lastfreq <- 4
-                            }else if(!is.na(fmod_fft$absestimate[3+5*(i-1)])){
-                                lastfreq <- 3
-                            }else if(!is.na(fmod_fft$absestimate[2+5*(i-1)])){
-                                lastfreq <- 2
-                            }else{next}
-                        if(fmod_fft$absestimate[1+5*(i-1)]>0){ #all because absolute value
-                            if(fmod_fft$absestimate[lastfreq+5*(i-1)]>0){ #all because using abs value
-                                if((fmod_fft$absestimate[lastfreq+5*(i-1)] )>(fmod_fft$absestimate[1+5*(i-1)] /2)){ #larger than half the first estimate
-                                    if((fmod_fft$absestimate[lastfreq+5*(i-1)] )>(fmod_fft$absestimate[1+5*(i-1)] *1.5)){
-                                        positive_Intensifying <- c(positive_Intensifying,(1+5*(i-1)):(5+5*(i-1)))
-                                    } else{
-                                        if((fmod_fft$Estimate[lastfreq+5*(i-1)]*fmod_fft$Estimate[1+5*(i-1)])<0){
-                                            positive_Converging <- c(positive_Converging,(1+5*(i-1)):(5+5*(i-1)))
-                                        } else{
-                                        #same sign? if not, is decreasinfg, else:
-                                        positive_Constant <- c(positive_Constant,(1+5*(i-1)):(5+5*(i-1)))}} }
-                                        else{
-                                            positive_Converging <- c(positive_Converging,(1+5*(i-1)):(5+5*(i-1)))
-                }}}}
-                
-                
+                        fmod_fft$significant[(1+5*(i-1)):(5+5*(i-1))] <- 1     
+                                       }}
                 filt_names <- c("Unfiltered","3 years","5 years", "10 years", "15 years")
                 #filt_names <- c("Unfiltered","10 years","15 years", "20 years", "25 years") #uncomment to get supp Fig 2
                 fmod_fft$filters <- rep(filt_names,217)
                 fmod_fft$filters <- factor(fmod_fft$filters, levels = filt_names)            
                 fmod_fft$category <-"other"
-                fmod_fft$category[positive_Constant] <- "Constant"
-                fmod_fft$category[positive_Intensifying] <- "Intensifying"
-                fmod_fft$category[positive_Converging] <- "Converging"
+                fmod_fft$category[growth] <- "growth"
+                fmod_fft$category[levels] <- "levels"
+                
                 
 
-                fpc <- fmod_fft[positive_Constant,]
-                fpi <- fmod_fft[positive_Intensifying,]
-                fpd <- fmod_fft[positive_Converging,]
-                fpo <- fmod_fft[fmod_fft$category=="other",] #no estimates
+                fg <- fmod_fft[growth,]
+                fl <- fmod_fft[levels,]
                     
                 #Removing outliers
-                fpi <- fpi[fpi$countrycode!="SSD",]
-                fpi <- fpi[fpi$countrycode!="SLE",]
-                fpi <- fpi[fpi$countrycode!="GNQ",]
+                fg <- fg[fg$countrycode!="SSD",]
+                fg <- fg[fg$countrycode!="SLE",]
+                fg <- fg[fg$countrycode!="GNQ",]
                 #fpc <- fpc[fpc$countrycode!="LBY",]
-                fpi <- fpi[fpi$countrycode!="KOR",]
-                fpi <- fpi[fpi$countrycode!=fpi$countrycode[which(fpi$Estimate==min(fpi$Estimate,na.rm=TRUE))],]
+                fg <- fg[fg$countrycode!="KOR",]
+                fg <- fg[fg$countrycode!=fg$countrycode[which(fg$Estimate==min(fg$Estimate,na.rm=TRUE))],]
+                fl <- fl[fl$countrycode!=fl$countrycode[which(fl$Estimate==min(fl$Estimate,na.rm=TRUE))],]
+                fl <- fl[fl$countrycode!=fl$countrycode[which(fl$Estimate==min(fl$Estimate,na.rm=TRUE))],]
                 
                 # Figure 3 (start)
-                    plot_fpi <- ggplot(data=fpi,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
+                    plot_fg <- ggplot(data=fg,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
                     geom_line()+
-                    scale_colour_discrete(guide = 'none') +
-                    theme_bw()+
+                    scale_colour_discrete(name="Unfiltered estimate significantly different from zero") +
+                    theme_bw() + xlab("Minimum Periodicity after Filtering")+
                     geom_hline(yintercept=0,lty=2)+
-                    geom_dl(data=fpi[fpi$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
-                    labs(title="Intensifying")  + xlab("") + ylab("Estimated Effect of \n 1 Degree Warming on Growth (pp)") +
+                    #geom_dl(data=fg[fg$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
+                    labs(title="Evidence of Growth Effects \n (Low-freq estimate statistically different from zero)")  + ylab("Estimated Effect of \n 1 Degree Warming on Growth (pp)") +
                     theme(axis.line = element_line(colour = "black"),
                     panel.grid.major = element_blank(),
                     panel.grid.minor = element_blank(),
                     panel.border = element_blank(),
-                    panel.background = element_blank()) 
+                    panel.background = element_blank(),legend.position="bottom") 
 
 
 
                     
-                    plot_fpc <- ggplot(data=fpc,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
+                    plot_fl <- ggplot(data=fl,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
                     geom_line()+
-                    scale_colour_discrete(name="Low-frequency estimate significantly different from zero") +
+                    scale_colour_discrete(name="Unfiltered estimate significantly different from zero") +
                     theme_bw()+
                     geom_hline(yintercept=0,lty=2)+
                     geom_dl(data=fpc[fpc$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
-                    labs(title="Constant")  + xlab("Minimum Periodicity after Filtering") + ylab("") +
+                    labs(title="No evidence of growth effects")  + xlab("Minimum Periodicity after Filtering") + ylab("") +
                     theme(axis.line = element_line(colour = "black"),
                     panel.grid.major = element_blank(),
                     panel.grid.minor = element_blank(),
@@ -1277,26 +1320,324 @@
                     panel.background = element_blank()) 
 
 
-
-                    #fpd <- fpd[fpd$countrycode!="LBY",]
-                    plot_fpd <-ggplot(data=fpd,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
-                    geom_line()+
-                    scale_colour_discrete(guide = 'none') +
-                    theme_bw()+
-                    geom_hline(yintercept=0,lty=2)+
-                    geom_dl(data=fpd[fpd$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
-                    labs(title="Converging")  + xlab("") + ylab("")+
-                    theme(axis.line = element_line(colour = "black"),
-                    panel.grid.major = element_blank(),
-                    panel.grid.minor = element_blank(),
-                    panel.border = element_blank(),
-                    panel.background = element_blank()) 
-
-                    d <- ggarrange(plot_fpi,plot_fpc,plot_fpd,ncol=3,common.legend=TRUE) 
+                    d <- ggarrange(plot_fg,plot_fl,ncol=2,common.legend=TRUE,legend="bottom") 
                     d
                     table(fmod_fft$category)/5
                     #ggsave('Fig3_cat.png',dpi=500) 
                     
+                    # Mapping estimates
+                        glimpse(fmod_fft)
+                        unique(fmod_fft$countrycode)
+                        install.packages('rnaturalearthdata')
+                        library('rnaturalearthdata')
+                        world <- ne_countries(scale = "medium", returnclass = "sf")
+                        
+                        
+                        fmod_fft$iso_a3 <- fmod_fft$countrycode
+                        fmod_fft$test1 <- NA
+                        fmod_fft$test1[fmod_fft$category=="growth"] <- 1
+                        fmod_fft_map <- merge(world,fmod_fft,by="iso_a3")
+                        library(RColorBrewer)
+                            cols <- c("1" = "#8dd3c7", "0" = "#ffffb3")
+                            map_growth <- ggplot(data = fmod_fft_map) +
+                                geom_sf(aes(fill = factor(test1)))+
+                                scale_fill_manual(name = "Growth Effects",
+                                                    labels = c("Detected","Not detected"),
+                                values=cols)+
+                                theme(legend.position="bottom")+
+                                ggtitle("Location of Growth Effects")
+
+                            
+                           
+                            growtheff <- fmod_fft
+                            cg <- unique(growtheff$countrycode)
+                            for (i in 1:length(cg)){
+                                if(is.na(growtheff$Estimate[5+5*(i-1)])){
+                                    growtheff$Estimate[5+5*(i-1)] <- growtheff$Estimate[4+5*(i-1)]
+                                    
+                                if(is.na(growtheff$Estimate[4+5*(i-1)])){
+                                    growtheff$Estimate[5+5*(i-1)] <- growtheff$Estimate[3+5*(i-1)]
+                                    
+                                if(is.na(growtheff$Estimate[3+5*(i-1)])){
+                                    growtheff$Estimate[5+5*(i-1)] <- growtheff$Estimate[2+5*(i-1)]
+                                    }}}
+                            }
+                            growtheff$Estimate
+                            growtheff <- growtheff[which(growtheff$test1==1),]
+
+                            growtheff <- growtheff[which(growtheff$frequencies==max(growtheff$frequencies)),]
+                            growtheff <- merge(world,growtheff,by="iso_a3")
+
+                            map_significantgrowth <- ggplot(data = fmod_fft_map) +
+                                geom_sf(fill=NA)+
+                                geom_sf(data=growtheff,aes(fill = Estimate*100))+
+                                scale_fill_gradient2(
+                                    name = "Estimated impact \n (% per Degree)",
+                                    low = "red",
+                                    mid = "white",
+                                    high = "#00BFC4",
+                                    midpoint = 0,
+                                    space = "Lab",
+                                    na.value = "grey50",
+                                    guide = "colourbar",
+                                    aesthetics = "fill")+
+                                    ggtitle("Detected growth effects")+
+                                theme(legend.position="bottom")
+                            map_significantgrowth    
+                                
+                                
+                             
+
+                        ggarrange(plot_fg,map_growth,ncol=1,nrows=2)
+
+                    # Mapping estimates
+                # Figure 3 (start)
+
+                #Plotting some outliers 
+                    lby <- ggplot(data=wb[wb$c
+                    ountrycode=="LBY",], aes(x=year, y=growth))+geom_line()+theme_bw()+ggtitle("Economic growth in Libya") #ilitary intervention in 2011
+                    gnq <- ggplot(data=wb[wb$countrycode=="GNQ",], aes(x=year, y=growth))+geom_line()+theme_bw()+ggtitle("Economic growth in Equatorial Guinea") #In 1995 Mobil discovered oil in Guinea
+                    ssd <- ggplot(data=wb[wb$countrycode=="SSD",], aes(x=year, y=growth))+
+                    geom_line()+theme_bw()+ggtitle("Economic growth in South Sudan") #In 1995 Mobil discovered oil in Guinea              
+                    ukr <- ggplot(data=wb[wb$countrycode=="UKR",], aes(x=year, y=growth))+
+                    geom_line()+theme_bw()+ggtitle("Economic growth in Ukraine") #In 1995 Mobil discovered oil in Guinea
+                    ggarrange(d,ggarrange(gnq,lby,ncol=2),nrow=2)
+                    #ggsave('Fig_pathways_outliers.png',dpi=500) #Figure 3
+        # Categorizing significant intensifying (end)
+
+        # Categorizing statistically different estimates (start)
+            glimpse(fullmods_filter_v)
+            glimpse(fullmods_filter)
+            fullmods_filter$Variance <- fullmods_filter_v$Variance
+            fmod_fft <- fullmods_filter
+            fmod_fft <- fmod_fft[fmod_fft$econdata=="wb",]
+            fmod_fft <- fmod_fft[fmod_fft$climdata=="UDel",]
+                fmod_fft$high95 <- fmod_fft$Estimate + fmod_fft$StandardError*1.64
+                fmod_fft$low95 <- fmod_fft$Estimate - fmod_fft$StandardError*1.64
+                #fmod_fft$absestimate <- abs(fmod_fft$Estimate)
+                fmod_fft$lowsignificant <- 0
+                fmod_fft$unfilteredsignificant <- 0
+                              
+                uncertain <- c(which(fmod_fft$high95>0 & fmod_fft$low95 <0))
+                `%notin%` <- Negate(`%in%`)
+                fmod_fft$sign <- rep(0,dim(fmod_fft)[1])
+                for (i in 1:numcountries){
+                if(is.null(fmod_fft$Estimate[1+5*(i-1)] )){next}
+                if(!is.na(fmod_fft$Estimate[5+5*(i-1)])){
+                    lastfreq <- 5
+                    }else if(!is.na(fmod_fft$Estimate[4+5*(i-1)])){
+                        lastfreq <- 4
+                    }else if(!is.na(fmod_fft$Estimate[3+5*(i-1)])){
+                        lastfreq <- 3
+                    }else if(!is.na(fmod_fft$Estimate[2+5*(i-1)])){
+                        lastfreq <- 2
+                    }else{next}
+                m <- fmod_fft$Estimate[1+5*(i-1)] * fmod_fft$Estimate[lastfreq+5*(i-1)]
+                if (is.na(m)){next}
+                if(m>0 ){
+                    fmod_fft$sign[(1+5*(i-1)):(5+5*(i-1))]=1
+                    }
+            }
+
+                converging <- 0
+                intensifying <- 0
+                for (i in 1:numcountries){
+                    if(!is.na(fmod_fft$Estimate[5+5*(i-1)])){
+                            lastfreq <- 5
+                            }else if(!is.na(fmod_fft$Estimate[4+5*(i-1)])){
+                                lastfreq <- 4
+                            }else if(!is.na(fmod_fft$Estimate[3+5*(i-1)])){
+                                lastfreq <- 3
+                            }else if(!is.na(fmod_fft$Estimate[2+5*(i-1)])){
+                                lastfreq <- 2
+                            }else{next}
+                    theta <- abs(fmod_fft$Estimate[1+5*(i-1)]) - abs(fmod_fft$Estimate[lastfreq+5*(i-1)])
+                    var <- fmod_fft$Variance[lastfreq+5*(i-1)] + fmod_fft$Variance[1+5*(i-1)]
+                    conf95 <-  (var^0.5)*1.65 #one-tail  95%
+                    if(fmod_fft$sign[lastfreq+5*(i-1)]==1){
+                        if(theta-conf95 >0 ){
+                            converging <- c(converging,(1+5*(i-1)):(5+5*(i-1))) 
+                        }
+                        if(theta+conf95 < 0 ){
+                            intensifying <- c(intensifying,(1+5*(i-1)):(5+5*(i-1))) 
+                        }
+                        if((lastfreq+5*(i-1)) %notin% uncertain){
+                        fmod_fft$lowsignificant[(1+5*(i-1)):(5+5*(i-1))] <- 1     
+                                       }
+                        if((1+5*(i-1)) %notin% uncertain){
+                            fmod_fft$unfilteredsignificant[(1+5*(i-1)):(5+5*(i-1))] <- 1     
+                                       }
+                    }
+                    }
+                    
+                filt_names <- c("Unfiltered","3 years","5 years", "10 years", "15 years")
+                #filt_names <- c("Unfiltered","10 years","15 years", "20 years", "25 years") #uncomment to get supp Fig 2
+                fmod_fft$filters <- rep(filt_names,217)
+                fmod_fft$filters <- factor(fmod_fft$filters, levels = filt_names)            
+                fmod_fft$category <- "Undefined"
+                fmod_fft$category[converging] <- "converging"
+                fmod_fft$category[intensifying] <- "intensifying"
+                table(fmod_fft$significant)/5
+                table(fmod_fft$category)/5
+                
+
+                fl <- fmod_fft[converging,]
+                fg <- fmod_fft[intensifying,]
+                fl <- fmod_fft[-c(intensifying),]
+                    
+                #Removing outliers
+                #fg <- fg[fg$countrycode!="SSD",]
+                #fg <- fg[fg$countrycode!="SLE",]
+                #fg <- fg[fg$countrycode!="GNQ",]
+                #fpc <- fpc[fpc$countrycode!="LBY",]
+                #fg <- fg[fg$countrycode!="KOR",]
+                #fg <- fg[fg$countrycode!=fg$countrycode[which(fg$Estimate==min(fg$Estimate,na.rm=TRUE))],]
+                #fl <- fl[fl$countrycode!=fl$countrycode[which(fl$Estimate==min(fl$Estimate,na.rm=TRUE))],]
+                #fl <- fl[fl$countrycode!=fl$countrycode[which(fl$Estimate==min(fl$Estimate,na.rm=TRUE))],]
+                
+                # Figure 3 (start)
+                    plot_fg <- ggplot(data=fg,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(lowsignificant)))+
+                    geom_line()+
+                    scale_colour_discrete(name="Low-freq estimate significantly different from zero") +
+                    theme_bw() + xlab("Minimum Periodicity after Filtering")+
+                    geom_hline(yintercept=0,lty=2)+
+                    #geom_dl(data=fg[fg$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
+                    ylab("Estimated Effect of \n 1 Degree Warming on Growth (pp)") +
+                    theme(axis.line = element_line(colour = "black"),
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    panel.border = element_blank(),
+                    panel.background = element_blank(),legend.position="bottom") +
+                    ggtitle("Evidence of Intensifying Effects \n (Low-freq estimate significantly larger than unfiltered estimate)")
+
+
+
+                    
+                    plot_fl <- ggplot(data=fl[fl$unfilteredsignificant==1,],aes(x=filters,y=Estimate*100, group = countrycode,color=factor(lowsignificant)))+
+                    geom_line()+
+                    scale_colour_discrete(name="Loefreq estimate significantly different from zero") +
+                    theme_bw()+
+                    geom_hline(yintercept=0,lty=2)+
+                    #geom_dl(data=fpc[fpc$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
+                    xlab("Minimum Periodicity after Filtering")+ ylab("")+
+                    theme(axis.line = element_line(colour = "black"),
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    panel.border = element_blank(),
+                    panel.background = element_blank()) +
+                    ggtitle("Evidence of Converging towards zero \n (Low-freq estimate significantly smaller than unfiltered estimate)")
+
+
+
+                    d <- ggarrange(map_growth,ggarrange(plot_fg,plot_fl,ncol=2,nrow=1,common.legend=FALSE,legend="bottom"),ncol=1,nrow=2) 
+                    d
+                    table(fmod_fft$category)/5
+                    table(fmod_fft$significant)/5
+
+                    #ggsave('Fig3_cat.png',dpi=500) 
+                    
+                    # Mapping estimates
+                        glimpse(fmod_fft)
+                        unique(fmod_fft$countrycode)
+                        install.packages('rnaturalearthdata')
+                        library('rnaturalearthdata')
+                        world <- ne_countries(scale = "medium", returnclass = "sf")
+                        
+                        
+                        fmod_fft$iso_a3 <- fmod_fft$countrycode
+                        fmod_fft$test1 <- NA
+                        fmod_fft$test1[fmod_fft$category=="growth"] <- 1
+                        fmod_fft_map <- merge(world,fmod_fft,by="iso_a3")
+                        library(RColorBrewer)
+                            cols <- c("1" = "#8dd3c7", "0" = "#ffffb3")
+                            map_growth <- ggplot(data = fmod_fft_map) +
+                                geom_sf(aes(fill = factor(test1)))+
+                                scale_fill_manual(name = "Growth Effects",
+                                                    labels = c("Detected","Not detected"),
+                                values=cols)+
+                                theme(legend.position="bottom")+
+                                ggtitle("Location of Growth Effects")
+
+                            
+                           
+                            growtheff <- fmod_fft
+                            cg <- unique(growtheff$countrycode)
+                            for (i in 1:length(cg)){
+                                if(is.na(growtheff$Estimate[5+5*(i-1)])){
+                                    growtheff$Estimate[5+5*(i-1)] <- growtheff$Estimate[4+5*(i-1)]
+                                    
+                                if(is.na(growtheff$Estimate[4+5*(i-1)])){
+                                    growtheff$Estimate[5+5*(i-1)] <- growtheff$Estimate[3+5*(i-1)]
+                                    
+                                if(is.na(growtheff$Estimate[3+5*(i-1)])){
+                                    growtheff$Estimate[5+5*(i-1)] <- growtheff$Estimate[2+5*(i-1)]
+                                    }}}
+                            }
+                            growtheff$Estimate
+                            growtheff <- growtheff[which(growtheff$test1==1),]
+
+                            growtheff <- growtheff[which(growtheff$frequencies==15),]
+                            growtheff <- merge(world,growtheff,by="iso_a3")
+
+                            ggplot(data = fmod_fft_map) +
+                                geom_sf(fill=NA)+
+                                geom_sf(data=growtheff,aes(fill = Estimate*100))+
+                                scale_fill_gradient2(
+                                    name = "Estimated impact \n (% per Degree)",
+                                    low = "red",
+                                    mid = "white",
+                                    high = "#00BFC4",
+                                    midpoint = 0,
+                                    space = "Lab",
+                                    na.value = "grey50",
+                                    guide = "colourbar",
+                                    aesthetics = "fill")+
+                                    ggtitle("Detected growth effects")+
+                                theme(legend.position="bottom")
+                                
+                                
+                                
+                                scale_fill_manual(name = "Growth Effects",
+                                                    labels = c("Detected","Not detected"),
+                                values=cols)+
+                                theme(legend.position="bottom")+
+                                ggtitle("Location of Growth Effects")
+
+
+                        ggarrange(plot_fg,map_growth,ncol=1,nrows=2)
+
+
+                            ggplot(data = fmod_fft_map) +
+                                geom_sf()+
+                                facet_wrap(~frequencies, labeller = labeller(frequencies = 
+                                    c("0"="Unfiltered",
+                                    "3" = "f3",
+                                    "5" = "f5",
+                                    "10" = "f10",
+                                    "15" = "f15"))) +
+                                geom_sf(data = fmod_fft_map, aes(fill = Estimate)) +
+                                scale_fill_gradient2(low = "red",
+                                    mid = "white",
+                                    high = "#00BFC4",
+                                    midpoint = 0,
+                                    space = "Lab",
+                                    na.value = "grey50",
+                                    guide = "colourbar",
+                                    aesthetics = "fill")
+                        
+                        ggplot(data = fmod_fft_map) +
+                            geom_sf()+
+                            geom_sf(data = fmod_fft_map[fmod_fft_map$test1==1,], aes(fill = Estimate)) +
+                            scale_fill_gradient2(low = "red",
+                                mid = "white",
+                                high = "#00BFC4",
+                                midpoint = 0,
+                                space = "Lab",
+                                na.value = "grey50",
+                                guide = "colourbar",
+                                aesthetics = "fill")
+
+                    # Mapping estimates
                 # Figure 3 (start)
 
                 #Plotting some outliers 
