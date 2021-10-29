@@ -458,6 +458,7 @@
             nsims=500
             sims=array(dim=c(nsims,length(periods),2))
             sims_adjusted=array(dim=c(nsims,length(periods),2))
+            sims_ar=array(dim=c(nsims,length(periods),2))
             for(i in 1:nsims){
                 randomtemp=Re(randomts(gtemp))[1:time]
                 #randomtemp=Re(randomts(ustemp_lmr))[1:time]
@@ -497,8 +498,10 @@
                     names(filt) <- c("temp","growth","levels","templag")
                     mod_gfilt=lm(growth~temp,data=filt)$coef[2]
                     mod_lfilt=lm(levels~temp,data=filt)$coef[2]
+                    dw <- dwtest(lm(growth~temp,data=filt)) #test for autocorrelation
                     sims[i,k,]=c(mod_gfilt,mod_lfilt)
                     sims_adjusted[i,k,]=c(mod_gfilt/ratio,mod_lfilt/ratio)
+                    sims_ar[i,k,]=c(dw$statistic[1],dw$p.value[1])
                 }
                 
 
@@ -508,6 +511,20 @@
             # Comparing quadratic
           
                 # Test 
+                    
+                    simsfiltmean=apply(sims_ar,MARGIN=c(2,3),FUN=mean)
+                    simsfiltsd=apply(sims_ar,MARGIN=c(2,3),FUN=sd)
+                    colnames(simsfiltmean)=c("Growth","Level");rownames(simsfiltmean)=periods
+                    simsfiltdat=cbind(melt(simsfiltmean),melt(simsfiltsd)[,3])
+                    colnames(simsfiltdat)=c("frequencies","ImpactType","dw_estimate","dw_pvalue")
+                    theme_set(theme_bw(base_size = 20))
+                    
+                    simsfiltdat$periodsregationPeriod <- c("Unfiltered", "10 years", "20 years", "50 years", "100 years","Unfiltered", "10 years", "20 years", "50 years", "100 years")
+                    simsfiltdat$periodsregationPeriod <- factor(simsfiltdat$periodsregationPeriod,
+                        levels = c("Unfiltered", "10 years", "20 years", "50 years", "100 years"))
+                    simsfiltdat_ar <- simsfiltdat
+
+                    
                     simsfiltmean=apply(sims_adjusted,MARGIN=c(2,3),FUN=mean)
                     simsfiltsd=apply(sims_adjusted,MARGIN=c(2,3),FUN=sd)
                     colnames(simsfiltmean)=c("Growth","Level");rownames(simsfiltmean)=periods
@@ -548,9 +565,22 @@
                     b=b+labs(x="Filters (minimum periodicity)",y="Estimated Growth Impact\n(% per Degree)",col="Impact Model")
                     b=b+scale_color_manual(values=c("#d3818c","#7375a4")) + ggtitle("Impacts estimation using low pass filters") #+ ylim(-10,5)
                     b
-                # Comparing quadratic (end)
-                
-                ggarrange(b,a,nrow=2,ncol=1)
+
+
+                       
+                        hist(fullmods_filter_ar$dw_pvalue, breaks = c(0,0.001,0.05,0.1,1))
+                        ggplot(data=fullmods_filter_ar, aes(x=dw_pvalue, y=dw_test,color=frequencies))+geom_point()+theme_bw()
+                        
+                        aa1 <- ggplot(data=simsfiltdat_ar, aes(dw_pvalue,fill=frequencies,group=frequencies))+theme_bw()+
+                        geom_histogram(breaks=c(0,0.001,0.005,0.01,0.2,0.5,1))+ scale_x_continuous(trans='log',breaks=c(0,0.001,0.005,0.01,0.2,0.5,1))+
+                        ggtitle("P-values of the DW test for autocorrelation")
+                        
+                        ab1 <- ggplot(data=simsfiltdat_ar, aes(dw_estimate,fill=frequencies,group=frequencies))+theme_bw()+
+                        geom_histogram()+
+                        ggtitle("Autocorrelation Estimate")
+
+                        ggarrange(ab1, aa1,common.legend=TRUE,ncol=1,nrow=2,legend="bottom")
+
     ## 2.4. Perform simulation - WITH DRIFT ADJUSTMENT (end)
 
     ## 2.4. Perform simulation - Combaination Gammas and Betas (start)
@@ -870,6 +900,7 @@
         #periods <- c(0,10,20,25,27) Uncomment to get Supp Fig 2
         fullmods_filter=array(dim=c(length(countries),2,length(periods),length(dataset),length(datasetweather)))
         fullmods_filter_var=array(dim=c(length(countries),2,length(periods),length(dataset),length(datasetweather)))
+        fullmods_filter_ar=array(dim=c(length(countries),2,length(periods),length(dataset),length(datasetweather)))
         fullmods_filter_p=array(dim=c(length(countries),2,length(periods),length(dataset),length(datasetweather)))
         panel_data <- data.frame(years = integer(),temp = double(), growth = double(), 
             preci = double(), countrycode = factor(), climdata = character(),
@@ -915,9 +946,9 @@
                     } else{
                     tempts <- pass.filt(t, W=periods[k], type="low", method="Butterworth")
                     x <- seq(1:length(tempts))
-                    #demeaned_t <- lm(t~x)$residuals
-                    #demeaned_tempts <- lm(tempts~x)$residuals
-                    ratio <- median(demeaned_t/demeaned_tempts)
+                    demeaned_t <- lm(t~x)$residuals
+                    demeaned_tempts <- lm(tempts~x)$residuals
+                    ratio <- abs(median(demeaned_t/demeaned_tempts))
                      
                     }
                      
@@ -948,7 +979,7 @@
                         mod_gfilterdata=lm(growth~temp+preci,data=filterdata)
                         # Uncomment to include templag
                     }
-
+                    dw <- dwtest(mod_gfilterdata) #test for autocorrelation
                     filterdata$years <- mt$model[[2]]
                     filterdata$countrycode <- rep(dat$countrycode[1],dim(filterdata)[1])
                     filterdata$climdata <- rep(datasetweather[mm],dim(filterdata)[1])
@@ -958,6 +989,7 @@
                     panel_data <- bind_rows(panel_data,filterdata)
                     fullmods_filter[i,,k,jj,mm]=c(summary(mod_gfilterdata)$coefficients[2,1:2]/ratio)
                     fullmods_filter_var[i,,k,jj,mm]=c(summary(mod_gfilterdata)$coefficients[2,1]/ratio,vcov(mod_gfilterdata)[2,2]/(ratio^2))
+                    fullmods_filter_ar[i,,k,jj,mm]=c(dw$statistic[1],dw$p.value[1])
                     fullmods_filter_p[i,,k,jj,mm]=summary(mod_gfilterdata)$coefficients[3,1:2] #If usd should be divided by the ratio of precipietation timeseries
                     }
                     
@@ -996,7 +1028,33 @@
         fullmods_filter_v$Estimate[which(is.infinite(fullmods_filter_v$Var))]=NA
         names(fullmods_filter_v) <- c("countrycode","frequencies","econdata","climdata","Estimate","Variance")
 
+        dimnames(fullmods_filter_ar)=list(countries,c("dw_test","dw_pvalue"),ranges,dataset,datasetweather)
+        fullmods_filterm <- melt(fullmods_filter_ar)
+        fullmods_filterm$Var1 <- names2
+        fullmods_filter_ar=dcast(fullmods_filterm,Var1+Var3+Var4+Var5~Var2, fun = mean)
+        fullmods_filter_ar$dw_test[which(is.infinite(fullmods_filter_ar$Var))]=NA
+        names(fullmods_filter_ar) <- c("countrycode","frequencies","econdata","climdata","dw_test","dw_pvalue")
 
+        # Is it autocorrelated?
+            glimpse(fullmods_filter_ar)
+            hist(fullmods_filter_ar$dw_pvalue, breaks = c(0,0.001,0.05,0.1,1))
+            ggplot(data=fullmods_filter_ar, aes(x=dw_pvalue, y=dw_test,color=frequencies))+geom_point()+theme_bw()
+            
+            aa <- ggplot(data=fullmods_filter_ar, aes(dw_pvalue,fill=frequencies,group=frequencies))+theme_bw()+
+            geom_histogram(breaks=c(0,0.001,0.005,0.01,0.2,0.5,1))+ scale_x_continuous(trans='log',breaks=c(0,0.001,0.005,0.01,0.2,0.5,1))+
+            ggtitle("P-values of the DW test for autocorrelation")
+            
+            ab <- ggplot(data=fullmods_filter_ar, aes(dw_test,fill=frequencies,group=frequencies))+theme_bw()+
+            geom_histogram()+
+            ggtitle("Autocorrelation Estimate")
+
+            ggarrange(ab, aa,common.legend=TRUE,ncol=1,nrow=2,legend="bottom")
+
+            ggplot(data=fullmods_filter_ar, aes(x=frequencies, y=dw_test,color=frequencies))+geom_point()+theme_bw()+
+            scale_x_continuous(trans='log2')
+
+
+        #Is it autocorrelated?
     ## 3.1. Country-level regressions (end)
         
     ## 3.1b Panel Regression (start)
@@ -1245,6 +1303,7 @@
                 growth <- 0              
                 uncertain <- c(which(fmod_fft$high95>0 & fmod_fft$low95 <0))
                 `%notin%` <- Negate(`%in%`)
+                numcountries <- length(unique(fmod_fft$countrycode))
                 for (i in 1:numcountries){
                     if(!is.na(fmod_fft$absestimate[5+5*(i-1)])){
                             lastfreq <- 5
@@ -1273,21 +1332,23 @@
                 fmod_fft$category <-"other"
                 fmod_fft$category[growth] <- "growth"
                 fmod_fft$category[levels] <- "levels"
+                table(fmod_fft$category)/5
                 
                 
 
                 fg <- fmod_fft[growth,]
                 fl <- fmod_fft[levels,]
+
                     
                 #Removing outliers
-                fg <- fg[fg$countrycode!="SSD",]
-                fg <- fg[fg$countrycode!="SLE",]
-                fg <- fg[fg$countrycode!="GNQ",]
+                #fg <- fg[fg$countrycode!="SSD",]
+                #fg <- fg[fg$countrycode!="SLE",]
+                #fg <- fg[fg$countrycode!="GNQ",]
                 #fpc <- fpc[fpc$countrycode!="LBY",]
-                fg <- fg[fg$countrycode!="KOR",]
-                fg <- fg[fg$countrycode!=fg$countrycode[which(fg$Estimate==min(fg$Estimate,na.rm=TRUE))],]
+                #fg <- fg[fg$countrycode!="KOR",]
+                #fg <- fg[fg$countrycode!=fg$countrycode[which(fg$Estimate==min(fg$Estimate,na.rm=TRUE))],]
                 fl <- fl[fl$countrycode!=fl$countrycode[which(fl$Estimate==min(fl$Estimate,na.rm=TRUE))],]
-                fl <- fl[fl$countrycode!=fl$countrycode[which(fl$Estimate==min(fl$Estimate,na.rm=TRUE))],]
+                fl <- fl[fl$countrycode!=fl$countrycode[which(fl$Estimate==max(fl$Estimate,na.rm=TRUE))],]
                 
                 # Figure 3 (start)
                     plot_fg <- ggplot(data=fg,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(significant)))+
@@ -1311,7 +1372,7 @@
                     scale_colour_discrete(name="Unfiltered estimate significantly different from zero") +
                     theme_bw()+
                     geom_hline(yintercept=0,lty=2)+
-                    geom_dl(data=fpc[fpc$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
+                    #geom_dl(data=fpc[fpc$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
                     labs(title="No evidence of growth effects")  + xlab("Minimum Periodicity after Filtering") + ylab("") +
                     theme(axis.line = element_line(colour = "black"),
                     panel.grid.major = element_blank(),
@@ -1329,7 +1390,7 @@
                         glimpse(fmod_fft)
                         unique(fmod_fft$countrycode)
                         install.packages('rnaturalearthdata')
-                        library('rnaturalearthdata')
+                        library('rnaturalearth')
                         world <- ne_countries(scale = "medium", returnclass = "sf")
                         
                         
@@ -1338,15 +1399,16 @@
                         fmod_fft$test1[fmod_fft$category=="growth"] <- 1
                         fmod_fft_map <- merge(world,fmod_fft,by="iso_a3")
                         library(RColorBrewer)
-                            cols <- c("1" = "#8dd3c7", "0" = "#ffffb3")
+                            cols <- c("1" = "#ffffb3", "0" = "#ffffb3")
                             map_growth <- ggplot(data = fmod_fft_map) +
+                                theme_minimal()+
                                 geom_sf(aes(fill = factor(test1)))+
                                 scale_fill_manual(name = "Growth Effects",
                                                     labels = c("Detected","Not detected"),
                                 values=cols)+
                                 theme(legend.position="bottom")+
                                 ggtitle("Location of Growth Effects")
-
+                            map_growth
                             
                            
                             growtheff <- fmod_fft
@@ -1362,14 +1424,14 @@
                                     growtheff$Estimate[5+5*(i-1)] <- growtheff$Estimate[2+5*(i-1)]
                                     }}}
                             }
-                            growtheff$Estimate
+                            #growtheff$Estimate
                             growtheff <- growtheff[which(growtheff$test1==1),]
 
                             growtheff <- growtheff[which(growtheff$frequencies==max(growtheff$frequencies)),]
                             growtheff <- merge(world,growtheff,by="iso_a3")
 
                             map_significantgrowth <- ggplot(data = fmod_fft_map) +
-                                geom_sf(fill=NA)+
+                                geom_sf(fill=NA)+theme_minimal()+
                                 geom_sf(data=growtheff,aes(fill = Estimate*100))+
                                 scale_fill_gradient2(
                                     name = "Estimated impact \n (% per Degree)",
@@ -1384,11 +1446,14 @@
                                     ggtitle("Detected growth effects")+
                                 theme(legend.position="bottom")
                             map_significantgrowth    
+
+                            ggarrange(d,map_growth,ncol=1,nrows=2)
                                 
                                 
                              
 
-                        ggarrange(plot_fg,map_growth,ncol=1,nrows=2)
+                        ggarrange(d,map_growth,ncol=1,nrows=2)
+                        ggarrange(d,map_significantgrowth,ncol=1,nrows=2)
 
                     # Mapping estimates
                 # Figure 3 (start)
@@ -1477,7 +1542,7 @@
                 fmod_fft$category <- "Undefined"
                 fmod_fft$category[converging] <- "converging"
                 fmod_fft$category[intensifying] <- "intensifying"
-                table(fmod_fft$significant)/5
+                table(fmod_fft$unfilteredsignificant)/5
                 table(fmod_fft$category)/5
                 
 
@@ -1501,7 +1566,7 @@
                     scale_colour_discrete(name="Low-freq estimate significantly different from zero") +
                     theme_bw() + xlab("Minimum Periodicity after Filtering")+
                     geom_hline(yintercept=0,lty=2)+
-                    #geom_dl(data=fg[fg$significant==1,],aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
+                    geom_dl(data=fg,aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
                     ylab("Estimated Effect of \n 1 Degree Warming on Growth (pp)") +
                     theme(axis.line = element_line(colour = "black"),
                     panel.grid.major = element_blank(),
