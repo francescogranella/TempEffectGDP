@@ -35,13 +35,90 @@
     mad <- read.csv(paste(dir,"Data/Maddison_UDel.csv",sep="")) 
     wb <- read.csv(paste(dir,"Data/WB_UDel.csv",sep=""))   
     bhm <- read.csv("C:/Users/bastien/Box/Long Run GDP Growth/Data/BHM.csv")
+    
+    #Replace estimated wb growth with World Bank values
+    #install.packages("xlsx")
+    #library("xlsx")
+    #wbg <- read.xlsx(paste(dir,"Data/API_NY.GDP.PCAP.KD.ZG_DS2_en_excel_v2_3159264.xls",sep=""))
+    wbg <- read.csv(paste(dir,"Data/API_NY.GDP.PCAP.KD.ZG_DS2_en_excel_v2_3159264_nohead.csv",sep=""))
+    
+    names(wbg) <- c("Country.Name" ,"Country.Code",   "Series.Name"   , "Series.Code", sprintf("%s",seq(1960:2020)))
+
+    years <- sprintf("%s",seq(1960:2020))
+    for (i in 1:length(years)){
+        yeari <- years[i]
+        w2 <- wbg[,which(colnames(wbg) %in% 
+            c("Country.Name","Country.Code","Series.Name",yeari))]
+        w3 <- reshape(w2, idvar=c("Country.Name" ,"Country.Code"), 
+            timevar="Series.Name", direction="wide")
+        #w3 <- w3[,c(1,2,3,5,29,32,33,35,36, 51, 53, 55)]
+        w3[,(dim(w3)[2]+1)] <- yeari
+        colnames(w3) <- c("countryname","countrycode","growthWDI_o","year")
+        if (i==1){Wbg <- w3} else {
+            Wbg <- rbind(Wbg,w3)
+        }
+    }
+    glimpse(Wbg)
+    Wbg$year <- as.double(Wbg$year)+1959
+
+    bhm_data <- bhm[,which(names(bhm) %in% c("iso","year","growthWDI","rgdpCAPgr","UDel_temp_popweight","UDel_precip_popweight"))]
+    names(bhm_data) <- c("countrycode","year","growthWDI","rgdpCAPgr","t_bhm_udel","p_bhm_udel")
+    merged_bhm <- merge(Wbg,bhm_data,by=c("countrycode","year"))   
+
+    ggplot(data=merged_bhm)+
+        geom_point(aes(x=growthWDI_o,y=growthWDI))
+    
+
     #Compare with BHM
+        #Load WB GDP data
+            dir2 <- "C:/Users/bastien/Box/Long Run GDP Growth/"
+            GDP=read.csv(paste(dir2,"Data/GDP Data 2020/WorldBank_DI_2020_gdppc.csv",sep = "")) #2010 USD
+            
+            GDP=read.csv(paste(dir,"Data/API_NY.GDP.PCAP.PP.CD_DS2_en_excel_v2_3158982.csv",sep = "")) #2010 USD
+            #glimpse(GDP)
+            temp<- t(GDP)
+            #temp <- GDP
+            glimpse(temp)
+
+            ISO3<- temp[2,1:dim(GDP)[1]]
+            year <- vector("numeric", (nrow(temp)-4)*(ncol(temp)))
+            countrycode <- vector("character", (nrow(temp)-4)*(ncol(temp)))
+            extra <- vector("character",(nrow(temp)-4)*(ncol(temp)))
+            for (i in 1:(ncol(temp))){
+            countrycode[(((i-1)*((nrow(temp)-4)))+1):(i*((nrow(temp)-4)))]=ISO3[i]
+            year[(((i-1)*((nrow(temp)-4)))+1):(i*((nrow(temp)-4)))]=c(1960:2020)
+            }
+            for (i in 1:((nrow(temp)-4)*(ncol(temp)))){
+            extra[i]=paste(countrycode[i],year[i],sep="")
+            }
+            #extra
+            gdppc <- as.vector((temp[5:65,1:dim(GDP)[1]]))
+            gdppc <- as.numeric(gdppc)
+            WB <- data.frame(countrycode,year,extra,gdppc)
+            
+            growth <- vector("numeric",nrow(WB))
+            interval <- vector("integer",nrow(WB))
+            #for(i in 1:(nrow(WB)-1)) {
+            for(i in 2:(nrow(WB)-1)) {
+            if (WB[i,1]==WB[i-1,1]){
+                interval[i+1]=WB[i+1,2]-WB[i,2]
+                #growth[i+1]=(WB[i+1,4]/ WB[i,4])^
+                 #   (1/(WB[i+1,2]-
+                  #  WB[i,2]))-1
+                #growth[(i+1)] <- log(WB[(i+1),4]) - log(WB[i,4])
+                growth[i] <- log(WB[i,4]) - log(WB[(i-1),4])
+                #growth[i] <- (WB[i,4] - WB[(i-1),4])/WB[(i-1),4]
+            }
+            }
+            WB <- data.frame(WB,interval,growth)
+            glimpse(WB)
+        #Load WB GDP Data
         bhm_data <- bhm[,which(names(bhm) %in% c("iso","year","growthWDI","rgdpCAPgr","UDel_temp_popweight","UDel_precip_popweight"))]
         names(bhm_data) <- c("countrycode","year","growthWDI","rgdpCAPgr","t_bhm_udel","p_bhm_udel")
-        names(WB)[2]<-"years"
-        glimpse(bhm_data)
-        glimpse(WB)
-        merged_bhm <- merge(WB,bhm_data,by=c("countrycode","years"))
+        merged_bhm <- merge(WB,bhm_data,by=c("countrycode","year"))
+        glimpse(merged_bhm)
+        ggplot(data=merged_bhm)+
+        geom_point(aes(x=growth,y=growthWDI))
         #names(wb)[coun]
         
         merged_bhm <- merge(wb,bhm_data,by=c("countrycode","year"))
