@@ -36,163 +36,66 @@
     wb <- read.csv(paste(dir,"Data/WB_UDel.csv",sep=""))   
     bhm <- read.csv("C:/Users/bastien/Box/Long Run GDP Growth/Data/BHM.csv")
     
-    #Replace estimated wb growth with World Bank values
-    #install.packages("xlsx")
-    #library("xlsx")
-    #wbg <- read.xlsx(paste(dir,"Data/API_NY.GDP.PCAP.KD.ZG_DS2_en_excel_v2_3159264.xls",sep=""))
-    wbg <- read.csv(paste(dir,"Data/API_NY.GDP.PCAP.KD.ZG_DS2_en_excel_v2_3159264_nohead.csv",sep=""))
-    names(wbg) <- c("Country.Name" ,"Country.Code",   "Series.Name"   , "Series.Code", sprintf("%s",seq(1960:2020)))
-    years <- sprintf("%s",seq(1960:2020))
-    for (i in 1:length(years)){
-        yeari <- years[i]
-        w2 <- wbg[,which(colnames(wbg) %in% 
-            c("Country.Name","Country.Code","Series.Name",yeari))]
-        w3 <- reshape(w2, idvar=c("Country.Name" ,"Country.Code"), 
-            timevar="Series.Name", direction="wide")
-        #w3 <- w3[,c(1,2,3,5,29,32,33,35,36, 51, 53, 55)]
-        w3[,(dim(w3)[2]+1)] <- yeari
-        colnames(w3) <- c("countryname","countrycode","growthWDI_o","year")
-        if (i==1){Wbg <- w3} else {
-            Wbg <- rbind(Wbg,w3)
-        }
-    }
-    glimpse(Wbg)
-    Wbg$year <- as.double(Wbg$year)+1959
 
-    #Compare with BHM
+    #Code to merge World Bank and Temperature Data data (to generate the file WB_UDel.csv currently commented)
+        #wbg <- read.csv(paste(dir,"Data/GDPpc_2015usd_WDI.csv",sep=""))
+        #udel_t <- read.csv(paste(dir,"Data/UDel_T_popaverage.csv",sep=""))
+        #udel_p <- read.csv(paste(dir,"Data/UDel_P_popaverage.csv",sep=""))
+        # wbg <- wbg[,-c(1)]
+        # names(wbg) <- c("Country.Code",   "Series.Name"   , "Series.Code", sprintf("%s",seq(1960:2020)))
+        # years <- sprintf("%s",seq(1960:2020))
+        # #arranging data
+        # for (i in 1:length(years)){
+        #     yeari <- years[i]
+        #     w2 <- wbg[,which(colnames(wbg) %in% 
+        #         c("Country.Code","Series.Name",yeari))]
+        #     w3 <- reshape(w2, idvar="Country.Code", 
+        #         timevar="Series.Name", direction="wide")
+        #     w3<-w3[,c(1:2)]
+        #     w3[,(dim(w3)[2]+1)] <- yeari
+        #     colnames(w3) <- c("countrycode","gdppc","year")
+        #     if (i==1){Wbg <- w3} else {
+        #         Wbg <- rbind(Wbg,w3)
+        #     }
+        # }
+        # glimpse(Wbg)
+        # Wbg$year <- as.double(Wbg$year)+1959
         
-    bhm_data <- bhm[,which(names(bhm) %in% c("iso","year","growthWDI","rgdpCAPgr","UDel_temp_popweight","UDel_precip_popweight"))]
-    names(bhm_data) <- c("countrycode","year","growthWDI","rgdpCAPgr","t_bhm_udel","p_bhm_udel")
-    merged_bhm <- merge(Wbg,bhm_data,by=c("countrycode","year"))   
+        # Wbg <- Wbg[order( Wbg[,1], Wbg[,3] ),] # Sort by column index [1] then [3]
+        # Wbg$gdppc <- as.double(Wbg$gdppc)
+        # Wbg <- Wbg[-which(Wbg$countrycode==""),]
 
-    ggplot(data=merged_bhm)+
-        geom_point(aes(x=growthWDI_o,y=growthWDI))
-    
+        # growth <- Wbg$gdppc*NA
+        # for(i in 2:(nrow(Wbg)-1)) {
+        #         if (Wbg$countrycode[i]==Wbg$countrycode[i-1]){
+        #             growth[i] <- log(Wbg$gdppc[i]) - log(Wbg$gdppc[i-1])
+        #         }
+        #         }
+        # Wbg$growth <- growth
+        # wb <- merge(Wbg,udel_p, by=c("countrycode","year"))
+        # wb <- merge(wb,udel_t, by=c("countrycode","year"))
+        # glimpse(wb)
+        # wb <- wb[,-which(names(wb)%in%c("X.x","X.y"))]
+        # names(wb)<-c( "countrycode", "year" ,"gdppc","growth" ,"UDel_pop_preci" , "UDel_pop_temp")
+        # write.csv(wb,file=paste(dir,"Data/WB_UDel.csv",sep=""))
+        # #Compare with BHM
+        
+        #     bhm_data <- bhm[,which(names(bhm) %in% c("iso","year","growthWDI","rgdpCAPgr","UDel_temp_popweight","UDel_precip_popweight"))]
+        #     names(bhm_data) <- c("countrycode","year","growthWDI","rgdpCAPgr","t_bhm_udel","p_bhm_udel")
+        #     merged_bhm <- merge(wb,bhm_data,by=c("countrycode","year"))   
 
-        #Load WB GDP data
-            dir2 <- "C:/Users/bastien/Box/Long Run GDP Growth/"
+        #     summary(felm(growth~growthWDI|countrycode|0|0,data=merged_bhm))
+
+        #     ggplot(data=merged_bhm)+
+        #         geom_point(aes(x=growth,y=growthWDI))
             
-            GDP=read.csv(paste(dir,"Data/API_NY.GDP.PCAP.PP.CD_DS2_en_excel_v2_3158982.csv",sep = "")) #2010 USD
-            temp<- t(GDP)
-            ISO3<- temp[2,1:dim(GDP)[1]]
-            year <- vector("numeric", (nrow(temp)-4)*(ncol(temp)))
-            countrycode <- vector("character", (nrow(temp)-4)*(ncol(temp)))
-            extra <- vector("character",(nrow(temp)-4)*(ncol(temp)))
-            for (i in 1:(ncol(temp))){
-            countrycode[(((i-1)*((nrow(temp)-4)))+1):(i*((nrow(temp)-4)))]=ISO3[i]
-            year[(((i-1)*((nrow(temp)-4)))+1):(i*((nrow(temp)-4)))]=c(1960:2020)
-            }
-            for (i in 1:((nrow(temp)-4)*(ncol(temp)))){
-            extra[i]=paste(countrycode[i],year[i],sep="")
-            }
-            gdppc <- as.vector((temp[5:65,1:dim(GDP)[1]]))
-            gdppc <- as.numeric(gdppc)
-            WB <- data.frame(countrycode,year,extra,gdppc)
-            
-            growth <- vector("numeric",nrow(WB))
-            interval <- vector("integer",nrow(WB))
-            
-            for(i in 2:(nrow(WB)-1)) {
-            if (WB[i,1]==WB[i-1,1]){
-                interval[i+1]=WB[i+1,2]-WB[i,2]
-                
-                growth[i] <- log(WB[i,4]) - log(WB[(i-1),4])
-                
-            }
-            }
-            WB <- data.frame(WB,interval,growth)
-            UDel_p_pop <- read.csv("C:/Users/bastien/Box/Long Run GDP Growth/Data/UDel Data new/p_popaverage_corrected.csv")
-            UDel_t_pop <- read.csv("C:/Users/bastien/Box/Long Run GDP Growth/Data/UDel Data new/popaverage_corrected.csv")
-            newwb <- merge(WB,UDel_t_pop,by=c("countrycode","year"))
-            newwb <- merge(newb,UDel_p_pop,by=c("countrycode","year"))
-            felm_panel1 <- felm(growth.x ~ UDel_t_pop+I(UDel_t_pop^2)+UDel_pop_preci+I(UDel_pop_preci^2)+countrycode:year+countrycode:I(year^2)|
-            countrycode+year|0|countrycode, data =newwb)
-            summary(felm_panel1)
-            
-        #Load WB GDP Data
-        bhm_data <- bhm[,which(names(bhm) %in% c("iso","year","growthWDI","rgdpCAPgr","UDel_temp_popweight","UDel_precip_popweight"))]
-        names(bhm_data) <- c("countrycode","year","growthWDI","rgdpCAPgr","t_bhm_udel","p_bhm_udel")
-        merged_bhm <- merge(WB,bhm_data,by=c("countrycode","year"))
-        glimpse(merged_bhm)
-        ggplot(data=merged_bhm)+
-        geom_point(aes(x=growth,y=growthWDI))
+        #     summary(felm(t_bhm_udel~UDel_pop_temp|countrycode|0|0,data=merged_bhm))
 
-        felm_panel1 <- felm(growth ~ t_bhm_udel+I(t_bhm_udel^2)+p_bhm_udel+I(p_bhm_udel^2)+countrycode:year+countrycode:I(year^2)|
-            countrycode+year|0|countrycode, data =merged_bhm)
-        summary(felm_panel1)
-
-        felm_panel1 <- felm(growthWDI ~ t_bhm_udel+I(t_bhm_udel^2)+p_bhm_udel+I(p_bhm_udel^2)+countrycode:year+countrycode:I(year^2)|
-            countrycode+year|0|countrycode, data =merged_bhm)
-        summary(felm_panel1)
-
-
-        glimpse(wb)
-        merged_wbWB <- merge(WB,wb,by=c("countrycode","year"))
-        glimpse(merged_wbWB)
-        ggplot(data=merged_wbWB)+
-        geom_point(aes(x=growth.x,y=growth.y))
-
-        
-        felm_panel1 <- felm(growth.x ~ UDel_pop_temp+I(UDel_pop_temp^2)+UDel_pop_preci+I(UDel_pop_preci^2)+countrycode:year+countrycode:I(year^2)|
-            countrycode+year|0|countrycode, data =merged_wbWB)
-        summary(felm_panel1)
-        
-        glimpse(UDel_t_pop)
-        
-
-        #names(wb)[coun]
-        
-        merged_bhm <- merge(wb,bhm_data,by=c("countrycode","year"))
-        glimpse(merged_bhm)
-        merged_bhm$UDel_pop_temp <- merged_bhm$t_bhm_udel
-        merged_bhm$UDel_pop_preci <- merged_bhm$p_bhm_udel
-        merged_bhm$growth <- merged_bhm$growthWDI
-        wb <- merged_bhm
-        countries <- unique(factor(wb$countrycode))
-        
-        glimpse(merged_bhm)
-        ggplot(data=merged_bhm)+
-        geom_point(aes(x=temp,y=t_bhm_udel))
-
-        summary(felm(growth~growthWDI|countrycode|0|0,data=merged_bhm))
-        glimpse(wb)
-        names(wb)[4] <- "years"
-        wb_corrected <- merge(WB,wb,by=c("countrycode","years"))
-        glimpse(wb_corrected)
-        wb_corrected$growth <-wb_corrected$growth.x
-        wb_corrected$UDel_pop_temp <-wb_corrected$growth.x
-
-        
-        ggplot(data=merged_bhm)+
-        geom_point(aes(x=growth,y=growthWDI))
-
-        ggplot(data=merged_bhm)+
-        geom_point(aes(x=growth,y=rgdpCAPgr))
-        
-        ggplot(data=merged_bhm)+
-        geom_point(aes(x=rgdpCAPgr,y=growthWDI))
-
-        ggplot(data=merged_bhm)+
-        geom_point(aes(x=temp,y=t_bhm_udel))
-        
-        ggplot(data=merged_bhm)+
-        geom_point(aes(x=preci,y=p_bhm_udel))
-
-        felm_panel1 <- felm(rgdpCAPgr ~ t_bhm_udel+I(t_bhm_udel^2)+p_bhm_udel+I(p_bhm_udel^2)+countrycode:years+countrycode:I(years^2)|
-            countrycode+years|0|countrycode, data =merged_bhm)
-        summary(felm_panel1)
-
-        
-
-        felm_panel1 <- felm(growth ~ UDel_pop_temp+I(UDel_pop_temp^2)+UDel_pop_preci+I(UDel_pop_preci^2)+countrycode:years+countrycode:I(years^2)|
-            countrycode+years|0|countrycode, data =wb_corrected)
-        summary(felm_panel1)
-
-
-        felm_panel1 <- felm(growth ~ temp+I(temp^2)+preci+I(preci^2)+countrycode:years+countrycode:I(years^2)|
-            countrycode+years|0|countrycode, data =merged_bhm)
-        summary(felm_panel1)
-    #Compare with BHM
+        #     ggplot(data=merged_bhm)+
+        #         geom_point(aes(x=t_bhm_udel,y=UDel_pop_temp))
+        #Compare data
+    #Code to merge World Bank and Temperature Data data (to generate the file WB_UDel.csv currently commented)
+   
 ## 1. Setup (end)
 
 ## 2. Simulation - Figures 1 and 2 (start)
@@ -265,7 +168,7 @@
         gtemp=apply(gtemp,MARGIN=3,FUN=mean)
         
         #take first 1500 years, prior to anthropogenic influence
-        #gtemp=gtemp[1:1500]
+        gtemp=gtemp[1:1500]
 
         #take out linear time trend
         x=1:1500
@@ -291,31 +194,6 @@
 
     ## 2.3. Perform simulation - WITH QUADRATIC TERM (start)
 
-
-        bhm <- function(T){
-                    G<- 0.0127*T-0.0005*(T^2)
-                    return(G)
-                }
-                T <- seq(13,16,length=100)
-                response <- bhm(T)
-                ustemprange <- range(wbUS$UDel_pop_temp,na.rm=TRUE)
-                ust <- seq(from=min(wbUS$UDel_pop_temp,na.rm=TRUE),to=max(wbUS$UDel_pop_temp,na.rm=TRUE),length=100)         
-                curveT <- data.frame(T,response)
-
-                tan <- function(T){
-                    slope <-  0.0127-2*0.0005*mean(ust)
-                    intercept <- (0.0127*mean(ust)-0.0005*(mean(ust)^2) )-(slope*mean(ust))
-                    Tan <- intercept + slope * (T)
-                    return(Tan)
-                }
-                
-                Tan<-tan(ust)
-                plot(T,response)
-                lines(ust,Tan)
-
-                abs(ust[1]-mean(ust)) #1 degree of difference
-                plot(ust,tan(ust)-bhm(ust))
-
             time=350 #or 350 years
             basegr=0.01 #2% per year baseline growth rate
             start=100
@@ -324,7 +202,7 @@
             coef2=-0.05
             growthsd=0.005 #standard deviation of growth variability unexplained by temperature
             periods <- c(0,3,5,10,15)
-            nsims=500
+            nsims=50
             sims=array(dim=c(nsims,length(periods),2))
             for(i in 1:nsims){
                 randomtemp=Re(randomts(gtemp))[1:time]
@@ -601,7 +479,7 @@
     ## 2.3. Perform simulation - WITH QUADRATIC TERM (end)
 
 
-    ## 2.4. Perform simulation - WITH DRIFT ADJUSTMENT (start)
+    ## 2.4. Perform simulation - (MAIN) WITH DRIFT ADJUSTMENT (start)
 
 
             time=350 #or 350 years
@@ -612,7 +490,7 @@
             coef2=-0.05
             growthsd=0.005 #standard deviation of growth variability unexplained by temperature
             periods <- c(0,10,20,50,100)
-            nsims=500
+            nsims=50
             sims=array(dim=c(nsims,length(periods),2))
             sims_adjusted=array(dim=c(nsims,length(periods),2))
             sims_ar=array(dim=c(nsims,length(periods),2))
@@ -725,8 +603,8 @@
 
 
                        
-                        hist(fullmods_filter_ar$dw_pvalue, breaks = c(0,0.001,0.05,0.1,1))
-                        ggplot(data=fullmods_filter_ar, aes(x=dw_pvalue, y=dw_test,color=frequencies))+geom_point()+theme_bw()
+                        #hist(fullmods_filter_ar$dw_pvalue, breaks = c(0,0.001,0.05,0.1,1))
+                        #ggplot(data=fullmods_filter_ar, aes(x=dw_pvalue, y=dw_test,color=frequencies))+geom_point()+theme_bw()
                         
                         aa1 <- ggplot(data=simsfiltdat_ar, aes(dw_pvalue,fill=frequencies,group=frequencies))+theme_bw()+
                         geom_histogram(breaks=c(0,0.001,0.005,0.01,0.2,0.5,1))+ scale_x_continuous(trans='log',breaks=c(0,0.001,0.005,0.01,0.2,0.5,1))+
@@ -861,8 +739,9 @@
 
     ## 3.1. Country-level regressions (start)
         dataset <- c("wb","barro","mad") 
-        datasetweather <- c("LMR","UDel")
+        datasetweather <- c("UDel")
         periods <- c(0,3,5,10,15)
+        countries <- unique(wb$countrycode)
         #periods <- c(0,10,20,25,27) Uncomment to get Supp Fig 2
         fullmods_filter=array(dim=c(length(countries),2,length(periods),length(dataset),length(datasetweather)))
         fullmods_filter_var=array(dim=c(length(countries),2,length(periods),length(dataset),length(datasetweather)))
@@ -877,16 +756,17 @@
             for (jj in (1:length(dataset))){
                 DATA <- get(dataset[jj])
                 countries=unique(factor(DATA$countrycode))
-                fullmods=array(dim=c(length(countries),2,length(periods)))
+                #fullmods=array(dim=c(length(countries),2,length(periods)))
                 for(k in 1:length(periods)){
                 for(i in 1:length(countries)){
                     dat=DATA[which(DATA$countrycode==countries[i]),
                         which(colnames(DATA)%in%c("countrycode","year","growth",tempname,preciname))] 
                     dat <- dat[is.finite(dat$growth),]
+
                         gonext <- 0
                     for (nn in (1:(dim(dat)[2]))){
                         if(sum(is.na(dat[,nn]))==dim(dat)[1]){
-                            #print(paste(countries[i],i,"missing complete column"))
+                            print(paste(countries[i],i,"missing complete column"))
                             gonext <- 1 }
                         
                     }
@@ -894,129 +774,159 @@
                         gonext <- 0
                         next}
                     if(sum(complete.cases(dat))<2){
-                            #print(paste(countries[i],i,"not complete cases"))
+                            print(paste(countries[i],i,"not complete cases"))
                             next
                     }
-                    names(dat) <- c("countrycode","year","growth","temp","preci")
+                    dat <- dat %>% rename("temp"=tempname,"preci"=preciname)
                     dat <- dat[complete.cases(dat),]
-                    dat <- dat[-c(1),] #first observation is missing
-                    if(dim(dat)[1]<2){next}
-                    #glimpse(dat)
-                    #glimpse(dat)
-                    #as.integer(rownames(dat))
+                    if(max(dat$year)-min(dat$year) != (dim(dat)[1]-1)){
+                        print(paste("Missing observation. Gap. To Do",dataset[jj]))
+                        next
+
+                    }
+                    #dat <- dat[-c(1),] #first observation is missing
+                    if(dim(dat)[1]<10){next}
                     mt <- lm(temp~year+I(year^2), data = dat)
                     meanT <- mean(dat$temp, na.rm = TRUE)
                     t <- resid(mt)    
-                    t <- timeSeries::interpNA(t, method = "linear")
-                    t <- timeSeries::removeNA(t)
-                    if(sum(complete.cases(t))<(2*(periods[k]+3))){
-                            #print(paste(countries[i],i,"not enough data for this filter"))
+                    mp <- lm(preci~year+I(year^2), data = dat)
+                    p <- resid(mp)
+                    meanP <- mean(dat$preci, na.rm = TRUE)
+                    mg <- lm(growth~year+I(year^2), data = dat)
+                    g <- resid(mg)
+                    if(length(t)<(2*(periods[k]))){
+                            print(paste(countries[i],i,"not enough data for this filter","length=",length(t),"periods=",periods[k]))
                             next}
                     if(k==1){
                         tempts <- dat$temp
+                        precits <- dat$preci
                         ratio <- 1
                     } else{
-                    tempts <- pass.filt(t, W=periods[k], type="low", method="Butterworth")
-                    x <- seq(1:length(tempts))
-                    demeaned_t <- lm(t~x)$residuals
-                    demeaned_tempts <- lm(tempts~x)$residuals
-                    ratio <- abs(median(demeaned_t/demeaned_tempts))
+                        tempts <- pass.filt(t, W=periods[k], type="low", method="Butterworth")
+                        precits <- pass.filt(p, W=periods[k], type="low", method="Butterworth")
+                        x <- seq(1:length(tempts))
+                        demeaned_t <- t
+                        demeaned_tempts <- tempts
+                        ratio <- abs(median(demeaned_t/demeaned_tempts))
+                        if(median(demeaned_t/demeaned_tempts)<0){
+                            print(paste("ratio was negative for ", countries[i], "at period",toString(periods[k])))
+                        }
                      
                     }
                      
-                    temp <- data.frame(year = 1:length(tempts), temp= unclass(tempts))
                     temp <- data.frame(year = dat$year, temp= unclass(tempts))
-                    if(sum(complete.cases(temp))<4){next}
-                    mp <- lm(preci~year+I(year^2), data = dat)
-                    p <- resid(mp)
-                    p <- interpNA(p, method = "linear")
-                    p <- removeNA(p)
-                    if(k==1){
-                        precits <- dat$preci
-                    } else{
-                    precits <- pass.filt(p, W=periods[k], type="low", method="Butterworth")
-                    }
                     preci <- data.frame(year = dat$year, preci= unclass(precits))
-                    mg <- lm(growth~year+I(year^2), data = dat)
-                    g <- resid(mg)
-                    g <- interpNA(g, method = "linear")
-                    g <- removeNA(g)
-                    
                     growth <- data.frame(year = dat$year, growth = unclass(g))
                     filterdata <- merge(temp,growth, by = "year")
                     filterdata <- merge(filterdata,preci, by = "year")
                     names(filterdata) <- c("years","temp","growth","preci")
+
                     if(k==1){
                         filterdata$templag =c(NA,filterdata$temp[1:(dim(filterdata)[1]-1)])
                         mod_gfilterdata=lm(growth~temp+preci+templag,data=filterdata)
-                        g <- dat$growth
                     } else{
                         mod_gfilterdata=lm(growth~temp+preci,data=filterdata)
-                        # Uncomment to include templag
                     }
                     dw <- dwtest(mod_gfilterdata) #test for autocorrelation
-                    #
-                    #hac <- vcovHAC(mod_gfilterdata)
-                    hacse <- unname(sqrt(diag(sandwich::vcovHAC(mod_gfilterdata))))
-                    filterdata$years <- mt$model[[2]]
+                    if (dw$p.value[1]<0.1){
+                        vcov_ <- sandwich::vcovHAC(mod_gfilterdata)
+                        hacse <- unname(sqrt(diag(vcov_)))[2] #s.e. corrected for autocorrelation
+                    } else {
+                        hacse <- summary(mod_gfilterdata)$coefficients[2,2]
+                        vcov_ <-vcov(mod_gfilterdata)
+                    } #We could try Newey West
+                    
+                    filterdata$years <- dat$year
                     filterdata$countrycode <- rep(dat$countrycode[1],dim(filterdata)[1])
                     filterdata$climdata <- rep(datasetweather[mm],dim(filterdata)[1])
                     filterdata$econdata <- rep(dataset[jj],dim(filterdata)[1])
                     filterdata$filter <- rep(paste(periods[k],sep="-"),dim(filterdata)[1])
                     filterdata$meant <- rep(meanT,dim(filterdata)[1])
+                    filterdata$meanp <- rep(meanP,dim(filterdata)[1])
                     panel_data <- bind_rows(panel_data,filterdata)
-                    fullmods_filter[i,,k,jj,mm]=c(summary(mod_gfilterdata)$coefficients[2,1]/ratio,hacse[2]/ratio)
-                    fullmods_filter_var[i,,k,jj,mm]=c(summary(mod_gfilterdata)$coefficients[2,1]/ratio,vcov(mod_gfilterdata)[2,2]/(ratio^2))
+                    fullmods_filter[i,,k,jj,mm]=c(summary(mod_gfilterdata)$coefficients[2,1]/ratio,hacse/ratio)
+                    fullmods_filter_var[i,,k,jj,mm]=c(summary(mod_gfilterdata)$coefficients[2,1]/ratio,vcov_[2,2]/(ratio^2))
                     fullmods_filter_ar[i,,k,jj,mm]=c(dw$statistic[1],dw$p.value[1])
-                    fullmods_filter_p[i,,k,jj,mm]=summary(mod_gfilterdata)$coefficients[3,1:2] #If usd should be divided by the ratio of precipietation timeseries
+                    fullmods_filter_p[i,,k,jj,mm]=summary(mod_gfilterdata)$coefficients[3,1:2] #Not HAC s.e. If usd should be divided by the ratio of precipietation timeseries
                     }
                     
                 
                 }
             }
         }
-
+        original_fullmods_filter <- fullmods_filter
+        original_fullmods_filter_var <- fullmods_filter_var
+        glimpse(fullmods_filter)
         ranges <- paste(periods,sep='-')
-        length(levels(wb$countrycode))
         countries <- unique(factor(wb$countrycode))
         countries_wb <- unlist(lapply(countries, as.character))
         dimnames(fullmods_filter)=list(countries,c("Estimate","StandardError"),ranges,dataset,datasetweather)
         fullmods_filterm <- melt(fullmods_filter)
-        countriesbarro <- unique(factor(barro$countrycode))
-        countries_barro <- unlist(lapply(countriesbarro , as.character))
-        countries_barro_extended <- c(countries_barro,countries_wb[(length(countries_barro)+1):length(countries_wb)*NA])
-        countriesmad <- unique(factor(mad$countrycode))
-        countries_mad <- unlist(lapply(countriesmad , as.character))
-        countries_mad_extended <- c(countries_mad,countries_wb[(length(countries_mad)+1):length(countries_wb)*NA])
-        countries_wbrep <- rep(countries_wb,2*5)
-        countries_barrorep <- rep(countries_barro_extended,2*5)
-        countries_madrep <- rep(countries_mad_extended,2*5)
-        names1 <- c(countries_wbrep,countries_barrorep,countries_madrep)
-        names2 <- c(names1,names1)
-        fullmods_filterm$Var1 <- names2
-        fullmods_filter=dcast(fullmods_filterm,Var1+Var3+Var4+Var5~Var2, fun = mean)
-        fullmods_filter$Estimate[which(is.infinite(fullmods_filter$StandardError))]=NA
-        names(fullmods_filter) <- c("countrycode","frequencies","econdata","climdata","Estimate","StandardError")
+        glimpse(fullmods_filterm)
+        #
+        names(fullmods_filterm) <- c("countrycode","variable","frequencies","econdata","climdata","value")
+        new_fft <- fullmods_filterm[order(fullmods_filterm[,2], fullmods_filterm[,3] ),] # Sort by column index [1] then [3]
+        glimpse(new_fft)
+        estimates <- new_fft$value[which(new_fft$variable=="Estimate")]        
+        ses <- new_fft$value[which(new_fft$variable=="StandardError")]
+        new_fft <- new_fft[c(1:length(estimates)),-c(2,6)]    
+        new_fft$Estimate <- estimates
+        new_fft$StandardError <- ses   
+        glimpse(new_fft) 
+        new_fft <- new_fft[order(new_fft[,1]),] # Sort by column index [1] then [3]     
+        fullmods_filter <- new_fft
+        #
+        # countriesbarro <- unique(factor(barro$countrycode))
+        # countries_barro <- unlist(lapply(countriesbarro , as.character))
+        # countries_barro_extended <- c(countries_barro,countries_wb[(length(countries_barro)+1):length(countries_wb)*NA])
+        # countriesmad <- unique(factor(mad$countrycode))
+        # countries_mad <- unlist(lapply(countriesmad , as.character))
+        # countries_mad_extended <- c(countries_mad,countries_wb[(length(countries_mad)+1):length(countries_wb)*NA])
+        # countries_wbrep <- rep(countries_wb,2*5)
+        # countries_barrorep <- rep(countries_barro_extended,2*5)
+        # countries_madrep <- rep(countries_mad_extended,2*5) #2*5
+        # names1 <- c(countries_wbrep,countries_barrorep,countries_madrep)
+        # #names2 <- c(names1,names1)
+        # names2 <- names1 #only usiong UDel and not LMR
+        # fullmods_filterm$Var1 <- names2
+        # fullmods_filter=dcast(fullmods_filterm,Var1+Var3+Var4+Var5~Var2, fun = mean)
+        # fullmods_filter$Estimate[which(is.infinite(fullmods_filter$StandardError))]=NA
+        # names(fullmods_filter) <- c("countrycode","frequencies","econdata","climdata","Estimate","StandardError")
+        
+        ranges <- paste(periods,sep='-')
+        countries <- unique(factor(wb$countrycode))
+        countries_wb <- unlist(lapply(countries, as.character))
+        dimnames(fullmods_filter_var)=list(countries,c("Estimate","StandardError"),ranges,dataset,datasetweather)
+        fullmods_filter_varm <- melt(fullmods_filter_var)
+        glimpse(fullmods_filter_var)
+        #
+        names(fullmods_filter_varm) <- c("countrycode","variable","frequencies","econdata","climdata","value")
+        new_fft_var <- fullmods_filter_varm[order(fullmods_filter_varm[,2], fullmods_filter_varm[,3] ),] # Sort by column index [1] then [3]
+        estimates <- new_fft_var$value[which(new_fft_var$variable=="Estimate")]        
+        ses <- new_fft_var$value[which(new_fft_var$variable=="StandardError")]
+        new_fft_var <- new_fft_var[c(1:length(estimates)),-c(2,6)]    
+        new_fft_var$Estimate <- estimates
+        new_fft_var$Variance <- ses   
+        glimpse(new_fft_var) 
+        new_fft_var  <- new_fft_var[order(new_fft_var[,1]),] # Sort by column index [1] then [3]     
+        fullmods_filter_var <- new_fft_var    
 
 
-        dimnames(fullmods_filter_var)=list(countries,c("Estimate","Var"),ranges,dataset,datasetweather)
-        fullmods_filterm <- melt(fullmods_filter_var)
-        fullmods_filterm$Var1 <- names2
-        fullmods_filter_v=dcast(fullmods_filterm,Var1+Var3+Var4+Var5~Var2, fun = mean)
-        fullmods_filter_v$Estimate[which(is.infinite(fullmods_filter_v$Var))]=NA
-        names(fullmods_filter_v) <- c("countrycode","frequencies","econdata","climdata","Estimate","Variance")
+        # dimnames(fullmods_filter_var)=list(countries,c("Estimate","Var"),ranges,dataset,datasetweather)
+        # fullmods_filterm <- melt(fullmods_filter_var)
+        # fullmods_filterm$Var1 <- names2
+        # fullmods_filter_v=dcast(fullmods_filterm,Var1+Var3+Var4+Var5~Var2, fun = mean)
+        # fullmods_filter_v$Estimate[which(is.infinite(fullmods_filter_v$Var))]=NA
+        # names(fullmods_filter_v) <- c("countrycode","frequencies","econdata","climdata","Estimate","Variance")
 
-        dimnames(fullmods_filter_ar)=list(countries,c("dw_test","dw_pvalue"),ranges,dataset,datasetweather)
-        fullmods_filterm <- melt(fullmods_filter_ar)
-        fullmods_filterm$Var1 <- names2
-        fullmods_filter_ar=dcast(fullmods_filterm,Var1+Var3+Var4+Var5~Var2, fun = mean)
-        fullmods_filter_ar$dw_test[which(is.infinite(fullmods_filter_ar$Var))]=NA
-        names(fullmods_filter_ar) <- c("countrycode","frequencies","econdata","climdata","dw_test","dw_pvalue")
+        # dimnames(fullmods_filter_ar)=list(countries,c("dw_test","dw_pvalue"),ranges,dataset,datasetweather)
+        # fullmods_filterm <- melt(fullmods_filter_ar)
+        # fullmods_filterm$Var1 <- names2
+        # fullmods_filter_ar=dcast(fullmods_filterm,Var1+Var3+Var4+Var5~Var2, fun = mean)
+        # fullmods_filter_ar$dw_test[which(is.infinite(fullmods_filter_ar$Var))]=NA
+        # names(fullmods_filter_ar) <- c("countrycode","frequencies","econdata","climdata","dw_test","dw_pvalue")
 
         # Is it autocorrelated?
-            glimpse(fullmods_filter_ar)
-            hist(fullmods_filter_ar$dw_pvalue, breaks = c(0,0.001,0.05,0.1,1))
-            ggplot(data=fullmods_filter_ar, aes(x=dw_pvalue, y=dw_test,color=frequencies))+geom_point()+theme_bw()
             
             aa <- ggplot(data=fullmods_filter_ar, aes(dw_pvalue,fill=frequencies,group=frequencies))+theme_bw()+
             geom_histogram(breaks=c(0,0.001,0.005,0.01,1))+ scale_x_continuous(trans='log',breaks=c(0,0.001,0.005,0.01,0.2,0.5,1))+
@@ -1038,15 +948,13 @@
             aa3      
 
             ggarrange(aa2,aa3,common.legend=TRUE,legend="bottom")    
+            ggsave("dwtest_autocorrelation.png",dpi=600)
 
-            ab <- ggplot(data=fullmods_filter_ar, aes(dw_test,fill=frequencies,group=frequencies))+theme_bw()+
-            geom_histogram()+
-            ggtitle("Autocorrelation Estimate")
+            #ab <- ggplot(data=fullmods_filter_ar, aes(dw_test,fill=frequencies,group=frequencies))+theme_bw()+
+            #geom_histogram()+
+            #ggtitle("Autocorrelation Estimate")
 
-            ggarrange(ab, aa,common.legend=TRUE,ncol=1,nrow=2,legend="bottom")
-
-            ggplot(data=fullmods_filter_ar, aes(x=frequencies, y=dw_test,color=frequencies))+geom_point()+theme_bw()+
-            scale_x_continuous(trans='log2')
+            #ggarrange(ab, aa,common.legend=TRUE,ncol=1,nrow=2,legend="bottom")
 
 
         #Is it autocorrelated?
@@ -1178,8 +1086,10 @@
         # Categorizing statistically different estimates (start)
             glimpse(fullmods_filter_v)
             glimpse(fullmods_filter)
-            fullmods_filter$Variance <- fullmods_filter_v$Variance
-            fmod_fft <- fullmods_filter
+            fmod_fft <- new_fft
+            fmod_fft$Variance <- fullmods_filter_var$Variance
+            
+            #fmod_fft <- fullmods_filter
             fmod_fft <- fmod_fft[fmod_fft$econdata=="wb",]
             fmod_fft <- fmod_fft[fmod_fft$climdata=="UDel",]
             fmod_fft$high95 <- fmod_fft$Estimate + fmod_fft$StandardError*1.64
@@ -1194,6 +1104,7 @@
             fmod_fft$sign <- rep(0,dim(fmod_fft)[1])
             
             numcountries <- length(unique(fmod_fft$countrycode))
+            glimpse(fmod_fft)
             for (i in 1:numcountries){
                 if(is.null(fmod_fft$Estimate[1+5*(i-1)] )){next}
                 if(!is.na(fmod_fft$Estimate[5+5*(i-1)])){
@@ -1226,6 +1137,8 @@
                             }else if(!is.na(fmod_fft$Estimate[2+5*(i-1)])){
                                 lastfreq <- 2
                             }else{next}
+                            
+                            if(is.na(fmod_fft$Estimate[1+5*(i-1)])){next}
                     theta <- abs(fmod_fft$Estimate[1+5*(i-1)]) - abs(fmod_fft$Estimate[lastfreq+5*(i-1)])
                     var <- fmod_fft$Variance[lastfreq+5*(i-1)] + fmod_fft$Variance[1+5*(i-1)]
                     conf95 <-  (var^0.5)*1.65 #one-tail  95%
@@ -1282,7 +1195,9 @@
                 fmod_fft<-fmod_fft[fmod_fft$category!="Undefined",]
                 library('rnaturalearth')
                 world <- ne_countries(scale = "medium", returnclass = "sf")
-                
+                fmod_fft<- fmod_fft[fmod_fft$countrycode %notin% fmod_fft$countrycode[which(fmod_fft$Estimate>quantile(fmod_fft$Estimate, na.rm=TRUE,0.99))],]
+                fmod_fft<- fmod_fft[fmod_fft$countrycode %notin% fmod_fft$countrycode[which(fmod_fft$Estimate<quantile(fmod_fft$Estimate, na.rm=TRUE,0.01))],]
+               
                 
                 fmod_fft$iso_a3 <- fmod_fft$countrycode
                 fmod_fft_map <- merge(world,fmod_fft,by="iso_a3")
@@ -1304,8 +1219,10 @@
                     
                 hist_bf <- ggplot() + theme_bw() + 
                     geom_histogram(data=df1, na.rm= TRUE, mapping = aes(x=lowsignificant, fill=factor(category)), 
-                    stat='count')+ scale_fill_manual(values = c(pal1[1],pal1[3],pal2[3],pal2[1]), 
-                    name="",labels=c("*Intensifying","Intensifying","Converging","*Converging"))+
+                    #stat='count')+ scale_fill_manual(values = c(pal1[1],pal1[3],pal2[3],pal2[1]), 
+                    #name="",labels=c("*Intensifying","Intensifying","Converging","*Converging"))+
+                    stat='count')+ scale_fill_manual(values = c(pal1[1],pal1[3],pal2[3]), 
+                    name="",labels=c("*Intensifying","Intensifying","Converging"))+ #No converging statistically significant found
                     scale_x_discrete(name="",
                         labels=c(expression(paste("|",beta[F],"| =0",sep="")),expression(paste("|",beta[F],"| >0",sep=""))))+
                     scale_y_continuous(name="Number of countries")+theme(legend.position="none")
@@ -1315,15 +1232,15 @@
                 glimpse(df2)     
                 hist_bu <- ggplot() + theme_bw()+
                     geom_histogram(data=df2, na.rm= TRUE, mapping = aes(x=unfilteredsignificant, fill=factor(category)), 
-                    stat='count')+ scale_fill_manual(values = c(pal1[1],pal1[3],pal2[3],pal2[1]), 
-                    name="",labels=c("*Intensifying","Intensifying","Converging","*Converging"))+
+                    #stat='count')+ scale_fill_manual(values = c(pal1[1],pal1[3],pal2[3],pal2[1]), 
+                    #name="",labels=c("*Intensifying","Intensifying","Converging","*Converging"))+
+                    stat='count')+ scale_fill_manual(values = c(pal1[1],pal1[3],pal2[3]), 
+                    name="",labels=c("*Intensifying","Intensifying","Converging"))+ #No converging statistically significant found
                     scale_x_discrete(name="",labels=c(expression(paste("|",beta[U],"| >0",sep=""))))+
                     scale_y_continuous(name="Number of countries") + theme(legend.position="right")
                  hist_bu 
                 
-                fmod_fft<- fmod_fft[fmod_fft$countrycode %notin% fmod_fft$countrycode[which(fmod_fft$Estimate>quantile(fmod_fft$Estimate, na.rm=TRUE,0.99))],]
-                fmod_fft<- fmod_fft[fmod_fft$countrycode %notin% fmod_fft$countrycode[which(fmod_fft$Estimate<quantile(fmod_fft$Estimate, na.rm=TRUE,0.01))],]
-                plot_fg <- ggplot(data=fmod_fft,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(category)))+
+                 plot_fg <- ggplot(data=fmod_fft,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(category)))+
                     geom_line()+
                     scale_colour_manual(name="Categories", values=c(pal1[1],pal1[3],pal2[3],pal2[1]),labels=c("Converging","Intensifying","Statistically Intensifying","Statistically Converging")) +
                     theme_bw() + xlab("Minimum Periodicity after Filtering")+
@@ -1338,8 +1255,8 @@
                     ggtitle("")
                     plot_fg      
 
-                ggarrange(plot_fg,ggarrange(hist_bu,hist_bf,ncol=2,nrow=1),ncol=1,nrow=2)    
-                   
+                fig_3 <- ggarrange(plot_fg,ggarrange(hist_bu,hist_bf,ncol=2,nrow=1),ncol=1,nrow=2)    
+                ggsave("Fig3_correcteddata.png",dpi=600)
                 fmod_fft_map$category <- factor(fmod_fft_map$category, levels = c("intensifying_stat", "intensifying", "converging","converging_stat"))
                
                 map_categories <- ggplot(data=fmod_fft_map) +
@@ -1347,24 +1264,32 @@
                             theme_minimal()+
                             geom_sf(aes(fill = category))+
                             scale_fill_manual(name = "",
-                                            labels=c("Converging","*Converging","Intensifying","*Intensifying"),
-                                            values=c(pal2[3],pal2[1],pal1[3],pal1[1]))+
+                                            #labels=c("Converging","Intensifying","*Intensifying"),
+                                            values=c(pal2[3],pal1[3],pal1[1]))+
                             theme(legend.position="bottom")+
                             ggtitle("Behavior of coefficients")
                     map_categories
+                    ggsave("Fig3_correcteddata.png",dpi=600)
+                
                 glimpse(fmod_fft_map)
 
-                ggplot(data=fmod_fft_map) +
-                            geom_sf(data = fmod_fft_map_na,aes(fill=NA))+
-                            theme_minimal()+
-                            geom_sf(aes(fill = factor(lowsignificant)))
-                            
-                            +
-                            scale_fill_manual(name = "",
-                                            labels=c("Converging","*Converging","Intensifying","*Intensifying"),
-                                            values=c(pal2[3],pal2[1],pal1[3],pal1[1]))+
-                            theme(legend.position="bottom")+
-                            ggtitle("Behavior of coefficients")
+                ggplot(data = fmod_fft_map) +
+                                geom_sf(data=fmod_fft_map,fill=NA)+theme_minimal()+
+                                geom_sf(data=fmod_fft_map,aes(fill = Estimate*100))+
+                                scale_fill_gradient2(
+                                    name = "Estimated impact \n (% per Degree)",
+                                    low = "red",
+                                    mid = "white",
+                                    high = "#00BFC4",
+                                    midpoint = 0,
+                                    space = "Lab",
+                                    na.value = "grey50",
+                                    guide = "colourbar",
+                                    aesthetics = "fill")+
+                                    ggtitle("Growth effects")+
+                                theme(legend.position="bottom")
+                    ggsave("Map_correcteddata.png",dpi=600)
+                           
         # Categorizing statistically different estimates (end)
     ## 3.2. categorizing - Plotting Figure 3 (end) 
 
@@ -1379,14 +1304,14 @@
         felm_2 <- felm(absestimate ~ factor(frequencies)|0|0|continent, data = fmod_fft)
         
         #stargazer(felm_2,felm_1, type="html", out="felm_1_2.html")
-        stargazer(felm_2,felm_1,type="text")
+        #stargazer(felm_2,felm_1,type="text")
 
-        felm_1_within <- felm(absestimate ~ frequencies|countrycode|0|continent, data = fmod_fft,weights = fmod_fft$invse)
-        felm_2_within <- felm(absestimate ~ frequencies|countrycode|0|continent, data = fmod_fft)
-        summary(felm_1_within)
-        stargazer(felm_2_within,felm_1_within,type="text")
+        #felm_1_within <- felm(absestimate ~ frequencies|countrycode|0|continent, data = fmod_fft,weights = fmod_fft$invse)
+        #felm_2_within <- felm(absestimate ~ frequencies|countrycode|0|continent, data = fmod_fft)
+        #summary(felm_1_within)
+        #stargazer(felm_2_within,felm_1_within,type="text")
         
-        stargazer(felm_2,felm_1,felm_2_within,felm_1_within, type="html", out="felm_1_2_within.html")
+        #stargazer(felm_2,felm_1,felm_2_within,felm_1_within, type="html", out="felm_1_2_within.html")
         
     ## 3.3. FELM abs estimate by filter - Table 1, columns 1 and 2 (end)
     
@@ -1396,42 +1321,46 @@
             minyear <- aggregate(wb2$year, by = list(wb2$countrycode), FUN = min, na.rm = TRUE )
             names(minyear) <- c("countrycode","year")
             minyear$extra <- paste(minyear$countrycode,minyear$year,sep="")
+            wb2$extra <- paste(wb2$countrycode,wb2$year,sep="")
             wb2 <- wb2[which(wb2$extra %in% minyear$extra),]
             wb2$loggdppc <- log(wb2$gdppc)
             wb2 <- wb2[,which(names(wb2) %in% c("countrycode","loggdppc"))]
-            fmod_fft <- merge(fmod_fft, wb2,by = "countrycode")
+            fmod_fft2 <- merge(fmod_fft, wb2,by = "countrycode")
+            glimpse(wb2)
             meangdppc <- aggregate(wb$gdppc, by = list(wb$countrycode), FUN = mean, na.rm = TRUE )
             names(meangdppc ) <-  c("countrycode", "meangdppc ")
-            fmod_fft <- merge(fmod_fft, meangdppc , by = "countrycode")
+            fmod_fft2 <- merge(fmod_fft2, meangdppc , by = "countrycode")
             pop_data <- wb_data("SP.POP.TOTL", start_date = 2019, end_date = 2019)
             names(pop_data)[2] <- "countrycode"
-            fmod_fft <- merge(fmod_fft, pop_data,by = "countrycode") 
+            fmod_fft2 <- merge(fmod_fft2, pop_data,by = "countrycode") 
+            glimpse(fmod_fft2)
             a <- wb_search("GDP.*PPP")
             a <- a[6,1]
             gdp_data <- wb_data(a, start_date = 2019, end_date = 2019)
             glimpse(gdp_data)
             names(gdp_data)[2] <- "countrycode"
-            fmod_fft <- merge(fmod_fft, gdp_data,by = "countrycode")         
+            fmod_fft2 <- merge(fmod_fft2, gdp_data,by = "countrycode")         
             a <- wb_search("GDP per capita")
             a <- a[10,1]
             gdp_data <- wb_data(a, start_date = 2019, end_date = 2019)
             names(gdp_data)[2] <- "countrycode"
-            fmod_fft <- merge(fmod_fft, gdp_data,by = "countrycode")
+            fmod_fft2 <- merge(fmod_fft2, gdp_data,by = "countrycode")
             meanT <- aggregate(wb$UDel_pop_temp, by = list(wb$countrycode), FUN = mean, na.rm = TRUE )
             names(meanT ) <-  c("countrycode", "meanT")
-            fmod_fft <- merge(fmod_fft, meanT,by = "countrycode")
-            fmod_fft <- fmod_fft[, !duplicated(colnames(fmod_fft))]
+            fmod_fft2 <- merge(fmod_fft2, meanT,by = "countrycode")
+            fmod_fft2 <- fmod_fft2[, !duplicated(colnames(fmod_fft))]
+            #glimpse(fmod_fft2)
             #ggplot(data=fmod_fft, aes(x=meanT,y= log(NY.GDP.PCAP.PP.CD), color=category))+geom_point()+theme_bw()
         # Adding socioeconomic variables (end)
 
         # weighted average (start)
 
             meanestimate <- data.frame(mean = rep(0,15),filter = rep(0,15), weight = rep(0,15), var = rep(0,15))
-            frequency <- c(0,3,5,10,15)
-            fmod_fft15 <- fmod_fft[(fmod_fft$frequencies==15),]
+            frequency <- c("Unfiltered","3 years","5 years","10 years","15 years")
+            fmod_fft15 <- fmod_fft2[(fmod_fft2$filters=="Unfiltered"),]
             fmod_fft15 <- fmod_fft15[!is.na(fmod_fft15$Estimate),]
             c15 <- levels(factor(fmod_fft15$countrycode))
-            fmod_fft15 <- fmod_fft[(fmod_fft$countrycode %in% c15),]
+            fmod_fft15 <- fmod_fft2[(fmod_fft2$countrycode %in% c15),]
             weighted.var <- function(x, w, na.rm = FALSE) {
                 if (na.rm) {
                     w <- w[i <- !is.na(x)]
@@ -1445,20 +1374,20 @@
                 }
             for (i in 1:5){
                 meanestimate$filter[(1 + ((i-1)*3)):(3 + ((i-1)*3))] <- frequency[i]
-                meanestimate$mean[1 + ((i-1)*3)]=mean(fmod_fft15$Estimate[fmod_fft15$frequencies==frequency[i]],na.rm=TRUE)
+                meanestimate$mean[1 + ((i-1)*3)]=mean(fmod_fft15$Estimate[fmod_fft15$filters==frequency[i]],na.rm=TRUE)
                 meanestimate$weight[1 + ((i-1)*3)]="Unweighted"
-                meanestimate$var[1 + ((i-1)*3)] <- var(fmod_fft15$Estimate[fmod_fft15$frequencies==frequency[i]])
+                meanestimate$var[1 + ((i-1)*3)] <- var(fmod_fft15$Estimate[fmod_fft15$filters==frequency[i]])
 
 
                 x1 <- fmod_fft15[!is.na(fmod_fft15$SP.POP.TOTL),]
-                meanestimate$mean[2 + ((i-1)*3)] <- weighted.mean(x=x1$Estimate[x1$frequencies==frequency[i]], x1$SP.POP.TOTL[x1$frequencies==frequency[i]],na.rm=TRUE)
+                meanestimate$mean[2 + ((i-1)*3)] <- weighted.mean(x=x1$Estimate[x1$filters==frequency[i]], x1$SP.POP.TOTL[x1$filters==frequency[i]],na.rm=TRUE)
                 meanestimate$weight[2 + ((i-1)*3)] <- "Population in 2019"
-                meanestimate$var[2 + ((i-1)*3)] <- weighted.var(x=x1$Estimate[x1$frequencies==frequency[i]], w = x1$SP.POP.TOTL[x1$frequencies==frequency[i]])
+                meanestimate$var[2 + ((i-1)*3)] <- weighted.var(x=x1$Estimate[x1$filters==frequency[i]], w = x1$SP.POP.TOTL[x1$filters==frequency[i]])
 
                 x1 <- fmod_fft15[!is.na(fmod_fft15$NY.GDP.MKTP.PP.KD),]
-                meanestimate$mean[3 + ((i-1)*3)] <- weighted.mean(x=x1$Estimate[x1$frequencies==frequency[i]], x1$NY.GDP.MKTP.PP.KD[x1$frequencies==frequency[i]],na.rm=TRUE)
+                meanestimate$mean[3 + ((i-1)*3)] <- weighted.mean(x=x1$Estimate[x1$filters==frequency[i]], x1$NY.GDP.MKTP.PP.KD[x1$filters==frequency[i]],na.rm=TRUE)
                 meanestimate$weight[3 + ((i-1)*3)] <- "GDP, PPP constant 2017 USD"
-                meanestimate$var[3 + ((i-1)*3)]  <- weighted.var(x=x1$Estimate[x1$frequencies==frequency[i]], w = x1$NY.GDP.MKTP.PP.KD[x1$frequencies==frequency[i]])
+                meanestimate$var[3 + ((i-1)*3)]  <- weighted.var(x=x1$Estimate[x1$filters==frequency[i]], w = x1$NY.GDP.MKTP.PP.KD[x1$filters==frequency[i]])
 
             }
             #See weighted means
@@ -1467,32 +1396,35 @@
 
         # Socioeconomic characteristics across categories (start)
             
-            fmod_fft$catsign <- paste(fmod_fft$category,fmod_fft$signlofreq,sep=".")
-            fmod_fft <- fmod_fft[fmod_fft$category!="other",]
-            fmod_fft$logGDPpc <- log(fmod_fft$NY.GDP.PCAP.PP.KD)
+            fmod_fft2$catsign <- paste(fmod_fft2$category,fmod_fft2$signlofreq,sep=".")
+            fmod_fft2 <- fmod_fft2[fmod_fft2$category!="other",]
+            fmod_fft2$logGDPpc <- log(fmod_fft2$NY.GDP.PCAP.PP.KD)
             densityGDP6 <-  ggstatsplot::ggbetweenstats(
-                data = fmod_fft,
+                data = fmod_fft2,
                 x = catsign,
                 y = logGDPpc
                 )
 
             densitymeanT6 <-  ggstatsplot::ggbetweenstats(
-            data = fmod_fft,
+            data = fmod_fft2,
             x = catsign,
             y = meanT
             )
 
             densityGDP3 <-  ggstatsplot::ggbetweenstats(
-            data = fmod_fft,
+            data = fmod_fft2,
             x = category,
             y = logGDPpc
             )
 
             densitymeanT3 <-  ggstatsplot::ggbetweenstats(
-            data = fmod_fft,
+            data = fmod_fft2,
             x = category,
             y = meanT
             )
+
+            ggarrange(densityGDP3,densitymeanT3)
+            ggsave("Category_byTandGDP.png",dpi=600)
         
             cat <- data.frame(T = rep(0,6),minT=rep(0,6),maxT=rep(0,6),G = rep(0,6),minG=rep(0,6),maxG=rep(0,6),categories=c("Constant.negative","Constant.positive","Converging.negative","Converging.positive","Intensifying.negative","Intensifying.positive"))
             cat$T <- aggregate(fmod_fft$meanT, list(fmod_fft$catsign), mean, na.rm=TRUE)[1:6,2]
@@ -1539,8 +1471,8 @@
             #ggsave("soecioeconomic_6cat.png",dpi=600)
             ggarrange(densityGDP3,densitymeanT3,cat3spread,cat3datapoints,nrow=4)
             #ggsave("soecioeconomic_3cat.png",dpi=600)
-
-            a=ggplot(fmod_fft[fmod_fft$frequencies=="15",],
+            head(fmod_fft2[fmod_fft2$filters=="Unfiltered",])
+            a=ggplot(fmod_fft2[fmod_fft2$filters=="Unfiltered",], 
             aes(x=meanT,y=Estimate))
             a = a+geom_point()+
             geom_smooth(method = "lm",
@@ -1549,7 +1481,7 @@
                     labs(title="Temperature effect Filter = 15")
             a
 
-            b=ggplot(fmod_fft[fmod_fft$frequencies=="15",],aes(x=logGDPpc,
+            b=ggplot(fmod_fft2[fmod_fft2$filters=="Unfiltered",],aes(x=logGDPpc,
             y=Estimate))
             b = b+geom_point()+
             #geom_errorbar()+
