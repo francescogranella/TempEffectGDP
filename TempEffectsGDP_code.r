@@ -134,7 +134,14 @@
     ## 2.1. Temperature fluctuations and filters - Figure 1 (end)
 
     ## 2.2. Global temperature profile (start)
-        file=nc_open(paste(dir,"Data/gmt_MCruns_ensemble_full.nc",sep=""))
+        
+        #Read and save global temperature file. NetCDF too large to be in GitHub
+
+        #file=nc_open(paste(dir,"Data/gmt_MCruns_ensemble_full.nc",sep=""))
+        #gtemp=ncvar_get(file,"gmt")
+        #gtemp=apply(gtemp,MARGIN=3,FUN=mean)
+        #saveRDS(gtemp, file = "Data/gtemp.rds")
+        
         # Uncomment for US temp profile (end)
             #file=nc_open(paste(dir,"Data/air_MCruns_ensemble_mean_LMRv2.0.nc",sep=""))
             #gtemp=ncvar_get(file,"air",start=c(1,1,1,1),count=c(-1,-1,1,-1))
@@ -165,8 +172,9 @@
             #p=periodogram(ustemp_lmr)
         
         # Uncomment for US temp profile (end)
-        gtemp=ncvar_get(file,"gmt")
-        gtemp=apply(gtemp,MARGIN=3,FUN=mean)
+        
+        # Load gtemp
+        gtemp <- readRDS(file = "Data/gtemp.rds")
         
         #take first 1500 years, prior to anthropogenic influence
         gtemp=gtemp[1:1500]
