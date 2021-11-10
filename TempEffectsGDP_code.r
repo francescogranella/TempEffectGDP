@@ -771,7 +771,7 @@
 
                     }
                     #dat <- dat[-c(1),] #first observation is missing
-                    if(dim(dat)[1]<10){next}
+                    if(dim(dat)[1]<5){next}
                     mt <- lm(temp~year+I(year^2), data = dat)
                     meanT <- mean(dat$temp, na.rm = TRUE)
                     t <- resid(mt)    
@@ -1001,8 +1001,6 @@
 
         # Categorizing statistically different estimates (start)
          
-            glimpse(fullmods_filter_v)
-            glimpse(fullmods_filter)
             fmod_fft <- new_fft
             fmod_fft$Variance <- fullmods_filter_var$Variance
             
@@ -1142,7 +1140,8 @@
                     stat='count')+ scale_fill_manual(values = c(pal1[1],pal1[3],pal2[3]), 
                     name="",labels=c("*Intensifying","Intensifying","Converging"))+ #No converging statistically significant found
                     scale_x_discrete(name="",
-                        labels=c(expression(paste("|",beta[F],"| =0",sep="")),expression(paste("|",beta[F],"| >0",sep=""))))+
+                        labels=c(expression(paste("|",theta[f],"| =0",sep="")),
+                        expression(paste("|",theta[f],"| >0",sep=""))))+
                     scale_y_continuous(name="Number of countries")+theme(legend.position="none")
 
                 df2 <- fmod_fft[which(fmod_fft$econdata=="wb" &fmod_fft$climdata=="UDel" & fmod_fft$filter=="Unfiltered" & fmod_fft$unfilteredsignificant==1),]
@@ -1154,12 +1153,13 @@
                     #name="",labels=c("*Intensifying","Intensifying","Converging","*Converging"))+
                     scale_fill_manual(values = c(pal1[1],pal1[3],pal2[3]), 
                     name="",labels=c("*Intensifying","Intensifying","Converging"))+ #No converging statistically significant found
-                    scale_x_discrete(name="",labels=c(expression(paste("|",beta[U],"| >0",sep=""))))+
+                    scale_x_discrete(name="",labels=c(expression(paste("|",theta[U],"| >0",sep=""))))+
                     scale_y_continuous(name="Number of countries") + theme(legend.position="none")
                  
                  plot_fg <- ggplot(data=fmod_fft,aes(x=filters,y=Estimate*100, group = countrycode,color=factor(category)))+
                     geom_line()+
-                    scale_colour_manual(name="Categories", values=c(pal1[1],pal1[3],pal2[3],pal2[1]),labels=c("Converging","Intensifying","Statistically Intensifying","Statistically Converging")) +
+                    scale_colour_manual(name="Categories", values=c(pal1[1],pal1[3],pal2[3],pal2[1]),
+                    labels=c("Converging","Intensifying","Statistically Intensifying","Statistically Converging")) +
                     theme_bw() + xlab("Minimum Periodicity after Filtering")+
                     geom_hline(yintercept=0,lty=2)+
                     #geom_dl(data=fg,aes(label = countrycode), method = list(dl.combine("last.points")), cex = 0.9)+
@@ -1180,7 +1180,7 @@
                 
                 fig_3 <- ggarrange(plot_fg,ggarrange(hist_bu,leg_cat,hist_bf,ncol=3,nrow=1),ncol=1,nrow=2)    
                 fig_3
-                #ggsave("Fig3_correcteddata.png",dpi=600)
+                #ggsave("Figures/Fig3.png",dpi=600)
                 
                 map_categories <- ggplot(data=fmod_fft_map) +
                             geom_sf(data = fmod_fft_map_na,aes(fill=NA))+
@@ -1284,7 +1284,7 @@
             frequency <- c("Unfiltered","3 years","5 years","10 years","15 years")
             #fmod_fft15 <- fmod_fft2[(fmod_fft2$filters=="Unfiltered"),]
             #fmod_fft15 <- fmod_fft15[!is.na(fmod_fft15$Estimate),]
-            c15 <- levels(factor(fmod_fft15$countrycode))
+            c15 <- levels(factor(fmod_fft2$countrycode))
             fmod_fft15 <- fmod_fft2[(fmod_fft2$countrycode %in% c15),]
             weighted.var <- function(x, w, na.rm = FALSE) {
                 if (na.rm) {
@@ -1308,7 +1308,6 @@
                 x1 <- x1[!is.na(x1$Estimate),]
                 est <- x1$Estimate[x1$filters==frequency[i]]
                 popw <- x1$SP.POP.TOTL[x1$filters==frequency[i]]
-                sum((est*popw)/sum(popw),na.rm=TRUE)
                 
                 meanestimate$mean[2 + ((i-1)*3)] <-sum((est*popw)/sum(popw),na.rm=TRUE)
                 meanestimate$weight[2 + ((i-1)*3)] <- "Population in 2019"
@@ -1581,7 +1580,7 @@
                                 stat='count')+ scale_fill_manual(values = c(pal1[1],pal1[3],pal2[3]), 
                                 name="",labels=c("*Intensifying","Intensifying","Converging"))+ #No converging statistically significant found
                                 scale_x_discrete(name="",
-                                    labels=c(expression(paste("|",beta[F],"| =0",sep="")),expression(paste("|",beta[F],"| >0",sep=""))))+
+                                    labels=c(expression(paste("|",theta[f],"| =0",sep="")),expression(paste("|",theta[f],"| >0",sep=""))))+
                                 scale_y_continuous(name="Number of countries")+theme(legend.position="none")
 
                             df2 <- fmod_fft[which(fmod_fft$econdata=="barro" &fmod_fft$climdata=="UDel" & fmod_fft$filter=="Unfiltered" & fmod_fft$unfilteredsignificant==1),]
@@ -1772,7 +1771,7 @@
                                 stat='count')+ scale_fill_manual(values = c(pal1[1],pal1[3],pal2[3]), 
                                 name="",labels=c("*Intensifying","Intensifying","Converging"))+ #No converging statistically significant found
                                 scale_x_discrete(name="",
-                                    labels=c(expression(paste("|",beta[F],"| =0",sep="")),expression(paste("|",beta[F],"| >0",sep=""))))+
+                                    labels=c(expression(paste("|",theta[f],"| =0",sep="")),expression(paste("|",theta[f],"| >0",sep=""))))+
                                 scale_y_continuous(name="Number of countries")+theme(legend.position="none")
 
                             df2 <- fmod_fft[which(fmod_fft$econdata=="mad" &fmod_fft$climdata=="UDel" & fmod_fft$filter=="Unfiltered" & fmod_fft$unfilteredsignificant==1),]
