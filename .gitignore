@@ -1,1 +1,14 @@
 Figures/
+*.pyc
+*.sublime-workspace
+*.sublime-project
+.idea/deployment.xml
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/inspectionProfiles/Project_Default.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/rAvailablePackageCache.xml
+.idea/rGraphicsSettings.xml
+.idea/rSettings.xml
+.idea/TempEffectGDP.iml
+.idea/vcs.xml
