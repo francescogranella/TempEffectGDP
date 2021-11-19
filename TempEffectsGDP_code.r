@@ -19,6 +19,8 @@
 ## 1. Setup (start)
     #set working directory
     dir <- "C:/Users/bastien/Documents/GitHub/TempEffectGDP/"
+    library(here)
+    dir <- here()
     setwd(dir)
     x<-c("sandwich","TTR", "ggpubr","mFilter", "ncdf4","TSA","tidyverse","ggplot2",
         "ggpubr","dplR","reshape2","raster","dplyr",
@@ -32,10 +34,10 @@
     cols=rev(c("#76d3ae","#0dcfca","#055692"))
 
     #Load data
-    barro <- read.csv(paste(dir,"Data/Barro_UDel.csv",sep="")) #Barro-Ursua and University of Delaware
-    mad <- read.csv(paste(dir,"Data/Maddison_UDel.csv",sep="")) #Maddison Project and University of Delaware
-    wb <- read.csv(paste(dir,"Data/WB_UDel.csv",sep=""))   #World Bank and University of Delaware
-    bhm <- read.csv("C:/Users/bastien/Box/Long Run GDP Growth/Data/BHM.csv") #BHM dataset (World Bank and University of Delaware)
+    barro <- read.csv("Data/Barro_UDel.csv") #Barro-Ursua and University of Delaware
+    mad <- read.csv("Data/Maddison_UDel.csv") #Maddison Project and University of Delaware
+    wb <- read.csv("Data/WB_UDel.csv")   #World Bank and University of Delaware
+    bhm <- read.csv("Data/BHM.csv") #BHM dataset (World Bank and University of Delaware)
     
 
     #Code to merge World Bank and Temperature Data data (to generate the file WB_UDel.csv; currently commented)
