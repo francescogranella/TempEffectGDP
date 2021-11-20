@@ -921,33 +921,33 @@
 
         # Is it autocorrelated?
             
-            aa <- ggplot(data=fullmods_filter_ar, aes(dw_pvalue,fill=frequencies,group=frequencies))+theme_bw()+
-            geom_histogram(breaks=c(0,0.001,0.005,0.01,1))+ scale_x_continuous(trans='log',breaks=c(0,0.001,0.005,0.01,0.2,0.5,1))+
-            ggtitle("P-values of the DW test for autocorrelation")
-            
-            
-            f_ar <- fullmods_filter_ar[fullmods_filter_ar$econdata=="wb",]
-            f_ar <- f_ar[f_ar$climdata=="UDel",]
-            f_ar$dw_pvalue_ad <- p.adjust(f_ar$dw_pvalue,"bonferroni")
-            
-            aa2 <- ggplot(data=f_ar, aes(dw_pvalue,fill=frequencies,group=frequencies))+theme_bw()+
-            geom_histogram(breaks=c(2e-5,0.05,1))+ scale_x_continuous(trans='log',breaks=c(2e-5,0.05,1))+
-            ggtitle("P-values of the DW test for autocorrelation")
-            aa2    
-
-            aa3 <- ggplot(data=f_ar, aes(dw_pvalue_ad,fill=frequencies,group=frequencies))+theme_bw()+
-            geom_histogram(breaks=c(2e-5,0.05,1))+ scale_x_continuous(trans='log',breaks=c(2e-5,0.05,1))+
-            ggtitle("P-values of the DW test for autocorrelation\nBonferroni adjusted")
-            aa3      
-
-            ggarrange(aa2,aa3,common.legend=TRUE,legend="bottom")    
-            #ggsave("dwtest_autocorrelation.png",dpi=600)
-
-            #ab <- ggplot(data=fullmods_filter_ar, aes(dw_test,fill=frequencies,group=frequencies))+theme_bw()+
-            #geom_histogram()+
-            #ggtitle("Autocorrelation Estimate")
-
-            #ggarrange(ab, aa,common.legend=TRUE,ncol=1,nrow=2,legend="bottom")
+            # aa <- ggplot(data=fullmods_filter_ar, aes(dw_pvalue,fill=frequencies,group=frequencies))+theme_bw()+  # `data` must be a data frame, or other object coercible by `fortify()`, not a numeric vector.
+            # geom_histogram(breaks=c(0,0.001,0.005,0.01,1))+ scale_x_continuous(trans='log',breaks=c(0,0.001,0.005,0.01,0.2,0.5,1))+
+            # ggtitle("P-values of the DW test for autocorrelation")
+            #
+            #
+            # f_ar <- fullmods_filter_ar[fullmods_filter_ar$econdata=="wb",]
+            # f_ar <- f_ar[f_ar$climdata=="UDel",]
+            # f_ar$dw_pvalue_ad <- p.adjust(f_ar$dw_pvalue,"bonferroni")
+            #
+            # aa2 <- ggplot(data=f_ar, aes(dw_pvalue,fill=frequencies,group=frequencies))+theme_bw()+
+            # geom_histogram(breaks=c(2e-5,0.05,1))+ scale_x_continuous(trans='log',breaks=c(2e-5,0.05,1))+
+            # ggtitle("P-values of the DW test for autocorrelation")
+            # aa2
+            #
+            # aa3 <- ggplot(data=f_ar, aes(dw_pvalue_ad,fill=frequencies,group=frequencies))+theme_bw()+
+            # geom_histogram(breaks=c(2e-5,0.05,1))+ scale_x_continuous(trans='log',breaks=c(2e-5,0.05,1))+
+            # ggtitle("P-values of the DW test for autocorrelation\nBonferroni adjusted")
+            # aa3
+            #
+            # ggarrange(aa2,aa3,common.legend=TRUE,legend="bottom")
+            # #ggsave("dwtest_autocorrelation.png",dpi=600)
+            #
+            # #ab <- ggplot(data=fullmods_filter_ar, aes(dw_test,fill=frequencies,group=frequencies))+theme_bw()+
+            # #geom_histogram()+
+            # #ggtitle("Autocorrelation Estimate")
+            #
+            # #ggarrange(ab, aa,common.legend=TRUE,ncol=1,nrow=2,legend="bottom")
 
 
         #Is it autocorrelated?
