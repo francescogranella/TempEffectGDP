@@ -711,7 +711,7 @@
                     b=b+geom_point(size=4)+geom_errorbar(aes(ymin=(MeanEffect-1.96*SDEffect)*100,ymax=(MeanEffect+1.96*SDEffect)*100),width=0.1,lwd=1.25)
                     b=b+geom_hline(yintercept=0,lwd=1.5,lty=3)
                     b=b+labs(x="Filters (minimum periodicity)",y="Estimated Growth Impact\n(% per Degree)",col="Impact Model")
-                    b=b+scale_color_manual(values=c("#d3818c","#7375a4")) + ggtitle("Impacts estimation using low pass filters") #+ ylim(-10,5)
+                    # b=b+scale_color_manual(values=c("#d3818c","#7375a4")) + ggtitle("Impacts estimation using low pass filters") #+ ylim(-10,5) Insufficient values in manual scale. 3 needed but only 2 provided.
                     b
                 # Comparing quadratic (end)
                 
