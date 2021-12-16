@@ -308,8 +308,8 @@
                     a=a+geom_point(size=4)+geom_errorbar(aes(ymin=(MeanEffect-1.96*SDEffect)*100,ymax=(MeanEffect+1.96*SDEffect)*100),width=0.1,lwd=1.25)
                     a=a+geom_hline(yintercept=0,lwd=1.5,lty=3)
                     a=a+labs(x="Filters (minimum periodicity)",y="Estimated Growth Impact\n(% per Degree)",col="Impact Model")
-                    a=a+scale_color_manual(values=c("#d3818c","#7375a4")) + 
-                    ggtitle("Impacts estimation using low-pass filters") #+ ylim(-10,5)
+                    a=a+scale_color_manual(values=c("#d3818c","#7375a4"))
+                    # ggtitle("Impacts estimation using low-pass filters") #+ ylim(-10,5)
                     a
                     
                     #ggsave("Fig2.png",dpi=600)
