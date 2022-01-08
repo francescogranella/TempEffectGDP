@@ -138,12 +138,9 @@ graph export "panel_quadratic_by.png", replace
 *	Lags
 * --------------- *
 
-global plots "BurkeHsiangMiguel2015_Replication/figures"
-use "data/bhm", clear
-rename (temp prec) (temp_0 prec_0)
+global plot
 
-local periods 0 3 5 10 15
-local lags 0 1 3 5
+ 1 3 5
 
 foreach p of loc periods {
 	foreach l of loc lags {
