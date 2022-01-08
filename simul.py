@@ -25,7 +25,7 @@ def filter(v, period):
     return signal.filtfilt(b, a, v)
 
 # Set up filter
-periods = [0, 3,5,10,15]
+periods = [0,3,5,10,15,25,50,100]
 
 
 # Read data
@@ -92,7 +92,7 @@ def detrend(varname, _df):
 
 # For every period: pass filter, compute the ratio, estimate the OLS coefficients.
 # Store ratio and coefficient.
-def filter_reg(df):
+def filter_reg(df, periods):
     data = []
     for p in periods:
         if p==0:
@@ -120,7 +120,7 @@ for col in tqdm(df.columns[:100]):
     _df['ts'] = detrend('ts', _df)
     _df['g_gamma'] = detrend('g_gamma', _df)
     _df['g_beta'] = detrend('g_beta', _df)
-    data.append(filter_reg(_df))
+    data.append(filter_reg(_df, periods))
     # g 2
     _df = df[[col]]
     _df.columns = ['ts']
@@ -128,7 +128,7 @@ for col in tqdm(df.columns[:100]):
     _df['ts'] = detrend('ts', _df)
     _df['g_gamma'] = detrend('g_gamma', _df)
     _df['g_beta'] = detrend('g_beta', _df)
-    data2.append(filter_reg(_df))
+    data2.append(filter_reg(_df, periods))
     # g 3
     _df = df[[col]]
     _df.columns = ['ts']
@@ -136,7 +136,7 @@ for col in tqdm(df.columns[:100]):
     _df['ts'] = detrend('ts', _df)
     _df['g_gamma'] = detrend('g_gamma', _df)
     _df['g_beta'] = detrend('g_beta', _df)
-    data3.append(filter_reg(_df))
+    data3.append(filter_reg(_df, periods))
 
 
 def densityplot(df):
@@ -146,7 +146,9 @@ def densityplot(df):
     plt.legend()
     plt.show()
 
-
+periods = [0, 10, 15, 25, 50]
+fontsize = 13
+errbarsize = {'elinewidth':3, 'capsize':3, 'capthick':3, 'ms':15}
 fig, ax = plt.subplots()
 ax.grid(zorder=0)
 ax.axhline(0, color='black', zorder=0)
@@ -157,22 +159,63 @@ for i,p in enumerate(periods):
     r['beta_hat_adj'] = r.beta_hat / r.ratio
     _m = r.mean()
     _sd = r.std()
-    ax.errorbar(i-0.1, _m['gamma_hat'], yerr=1.96*_sd['gamma_hat'], fmt='.k', color=cm.tab10(0))
-    ax.errorbar(i-0.1, _m['beta_hat'], yerr=1.96*_sd['beta_hat'], fmt='.k', color=cm.tab10(1))
-    ax.errorbar(i, _m['gamma_hat_adj'], yerr=1.96*_sd['gamma_hat_adj'], fmt='.k', color=cm.tab10(2))
-    ax.errorbar(i, _m['beta_hat_adj'], yerr=1.96*_sd['beta_hat_adj'], fmt='.k', color=cm.tab10(3))
+    ax.errorbar(i-0.05, _m['beta_hat'], yerr=1.96*_sd['beta_hat'], fmt='.k', color=cm.tab10(0),
+                **errbarsize, zorder=2)
+    ax.errorbar(i-0.05, _m['gamma_hat'], yerr=1.96*_sd['gamma_hat'], fmt='.k', color=cm.tab10(1),
+                **errbarsize,zorder=1)
+    ax.errorbar(i+0.05, _m['beta_hat_adj'], yerr=1.96*_sd['beta_hat_adj'], fmt='.k', color=cm.tab10(2),
+                **errbarsize, zorder=2)
+    ax.errorbar(i+0.05, _m['gamma_hat_adj'], yerr=1.96*_sd['gamma_hat_adj'], fmt='.k', color=cm.tab10(3),
+                **errbarsize, zorder=1)
+custom_lines = [Line2D([0], [0], color=cm.tab10(0), lw=2),
+                Line2D([0], [0], color=cm.tab10(1), lw=2)]
+ax.legend(custom_lines, [r'Levels', r'Growth', r'Levels, adjusted', r'Growth, adjusted'],
+          loc='upper center', bbox_to_anchor=(0.5,-0.25),
+          ncol=2, fontsize=fontsize)
+ax.set_xticklabels([0] + periods)
+ax.xaxis.set_major_locator(plt.MaxNLocator(len(periods)))
+ax.tick_params(axis='both', which='major', labelsize=fontsize)
+ax.set_xlabel('Filter (minimum periodicity)', fontsize=fontsize)
+# plt.title(r'Adjustment of $\beta$ and $\gamma$ effects', fontsize=fontsize)
+plt.tight_layout()
+plt.savefig('img/Additional_filtering.png', dpi=400)
+plt.show()
+
+periods = [0,3,5,10,15]
+fontsize = 11
+errbarsize = {'elinewidth':3, 'capsize':3, 'capthick':3, 'ms':15}
+fig, ax = plt.subplots()
+ax.grid(zorder=0)
+ax.axhline(0, color='black', zorder=0)
+ax.axhline(-0.05, color='black', zorder=0)
+for i,p in enumerate(periods):
+    r = pd.DataFrame(np.array(data)[:,i,:], columns=['beta_hat', 'gamma_hat', 'ratio'])
+    r['gamma_hat_adj'] = r.gamma_hat / r.ratio
+    r['beta_hat_adj'] = r.beta_hat / r.ratio
+    _m = r.mean()
+    _sd = r.std()
+    ax.errorbar(i-0.05, _m['beta_hat'], yerr=1.96*_sd['beta_hat'], fmt='.k', color=cm.tab10(0),
+                **errbarsize, zorder=2)
+    ax.errorbar(i-0.05, _m['gamma_hat'], yerr=1.96*_sd['gamma_hat'], fmt='.k', color=cm.tab10(1),
+                **errbarsize,zorder=1)
+    ax.errorbar(i+0.05, _m['beta_hat_adj'], yerr=1.96*_sd['beta_hat_adj'], fmt='.k', color=cm.tab10(2),
+                **errbarsize, zorder=2)
+    ax.errorbar(i+0.05, _m['gamma_hat_adj'], yerr=1.96*_sd['gamma_hat_adj'], fmt='.k', color=cm.tab10(3),
+                **errbarsize, zorder=1)
 custom_lines = [Line2D([0], [0], color=cm.tab10(0), lw=2),
                 Line2D([0], [0], color=cm.tab10(1), lw=2),
                 Line2D([0], [0], color=cm.tab10(2), lw=2),
                 Line2D([0], [0], color=cm.tab10(3), lw=2)]
-ax.legend(custom_lines, [r'$\hat{\gamma}$', r'$\hat{\beta}$', r'$\hat{\gamma}$ adj', r'$\hat{\beta}$ adj'],
-          loc='upper center', bbox_to_anchor=(0.5,-0.1),
-          ncol=2)
+ax.legend(custom_lines, [r'Levels', r'Growth', r'Levels, adjusted', r'Growth, adjusted'],
+          loc='upper center', bbox_to_anchor=(0.5,-0.25),
+          ncol=2, fontsize=fontsize)
 ax.set_xticklabels([0] + periods)
 ax.xaxis.set_major_locator(plt.MaxNLocator(len(periods)))
-plt.title(r'Adjustment of $\beta$ and $\gamma$ effects')
+ax.tick_params(axis='both', which='major', labelsize=fontsize)
+ax.set_xlabel('Filter (minimum periodicity)', fontsize=fontsize)
+# plt.title(r'Adjustment of $\beta$ and $\gamma$ effects', fontsize=fontsize)
 plt.tight_layout()
-plt.savefig('img/Adjustment.png')
+plt.savefig('img/Adjustment.png', dpi=400)
 plt.show()
 
 fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(10,10))
@@ -202,7 +245,7 @@ ax.xaxis.set_major_locator(plt.MaxNLocator(len(periods)))
 plt.savefig('img/Lags_simulation.png')
 plt.show()
 
-
+periods = [0,3,5,10,15]
 np.random.seed(1233)
 data = []
 data_25 = []
@@ -218,7 +261,7 @@ for col in tqdm(df.columns[:100]):
     _df['ts'] = detrend('ts', _df)
     _df['g_gamma'] = detrend('g_gamma', _df)
     _df['g_beta'] = detrend('g_beta', _df)
-    data.append(filter_reg(_df))
+    data.append(filter_reg(_df, periods))
     #
     _df = df[[col]]
     _df.columns = ['ts']
@@ -228,7 +271,7 @@ for col in tqdm(df.columns[:100]):
     _df['g_beta'] = detrend('g_beta', _df)
     e_ts = np.random.normal(0, 0.25*_df.ts.std(), len(_df))
     _df.ts = _df.ts + e_ts
-    data_25.append(filter_reg(_df))
+    data_25.append(filter_reg(_df, periods))
     e_25.append(e_ts)
     #
     _df = df[[col]]
@@ -239,7 +282,7 @@ for col in tqdm(df.columns[:100]):
     _df['g_beta'] = detrend('g_beta', _df)
     e_ts = np.random.normal(0, 0.5*_df.ts.std(), len(_df))
     _df.ts = _df.ts + e_ts
-    data_50.append(filter_reg(_df))
+    data_50.append(filter_reg(_df, periods))
     e_50.append(e_ts)
     #
     _df = df[[col]]
@@ -250,9 +293,10 @@ for col in tqdm(df.columns[:100]):
     _df['g_beta'] = detrend('g_beta',+ _df)
     e_ts = np.random.normal(0, 1*_df.ts.std(), len(_df))
     _df.ts = _df.ts + e_ts
-    data_100.append(filter_reg(_df))
+    data_100.append(filter_reg(_df, periods))
     e_100.append(e_ts)
 
+fontsize=17
 fig, axs = plt.subplots(nrows=4, ncols=1, figsize=(10,12))
 for j in range(4):
     _data = [data, data_25, data_50, data_100][j]
@@ -260,32 +304,51 @@ for j in range(4):
     ax = axs[j]
     ax.grid(zorder=0)
     ax.axhline(0, color='black', zorder=0)
-    ax.axhline(-0.05, color='black', zorder=0)
-    ax.set_title('SD of noise: ' + str(np.round(np.mean(np.abs(_e)), 3)) + '°, ' + ['0', '25%', '50%', '100%'][j] + ' of SD of detrended simulated temperature', fontsize=10)
+    ax.axhline(-0.05, color='black', zorder=0, lw=2)
+    ax.set_title('SD of measurement error: ' + str(np.round(np.mean(np.abs(_e)), 3)) + '°C, ' + ['0', '25%', '50%', '100%'][j] + ' of SD of detrended simulated temperature', fontsize=fontsize-4)
+    f = [0, 0.25, 0.5, 1][j]
+    ax.set_title(r'$\dfrac{\sigma_{error}}{\sigma_{detrended~T}} = $' + rf'{f}')
+    ax.set_yticks([0, -0.025, -0.05])
+    ax.set_yticklabels(['0', '-0.025', 'True effect'])
+    ax.tick_params(axis='both', which='major', labelsize=fontsize)
     if j==3:
         ax.set_xticklabels([0] + periods)
     else:
         ax.xaxis.set_major_formatter(matplotlib.ticker.NullFormatter())
     # ax.set_title('SD of noise: ' + ['0', '25%', '50%', '100%'][j] + ' of SD of detrended simulated temperature', fontsize=10)
+    points = []
     for i,p in enumerate(periods):
         r = pd.DataFrame(np.array(_data)[:,i,:], columns=['beta_hat', 'gamma_hat', 'ratio'])
         r['gamma_hat_adj'] = r.gamma_hat / r.ratio
         r['beta_hat_adj'] = r.beta_hat / r.ratio
         _m = r.mean()
         _sd = r.std()
-        ax.errorbar(i-0.1, _m['gamma_hat'], yerr=1.96*_sd['gamma_hat'], fmt='.k', color=cm.tab10(0))
-        ax.errorbar(i-0.1, _m['beta_hat'], yerr=1.96*_sd['beta_hat'], fmt='.k', color=cm.tab10(1))
-        ax.errorbar(i, _m['gamma_hat_adj'], yerr=1.96*_sd['gamma_hat_adj'], fmt='.k', color=cm.tab10(2))
-        ax.errorbar(i, _m['beta_hat_adj'], yerr=1.96*_sd['beta_hat_adj'], fmt='.k', color=cm.tab10(3))
-        # ax.plot(i, _m['gamma_hat_adj'], color=cm.tab10(2))
+        # ax.errorbar(i-0.1, _m['gamma_hat'], yerr=1.96*_sd['gamma_hat'], fmt='.k', color=cm.tab10(0))
+        # ax.errorbar(i-0.1, _m['beta_hat'], yerr=1.96*_sd['beta_hat'], fmt='.k', color=cm.tab10(1))
+        ax.errorbar(i, _m['beta_hat_adj'], yerr=1.96*_sd['beta_hat_adj'], fmt='.k', color=cm.tab10(0),
+                    **errbarsize, zorder=2)
+        ax.errorbar(i, _m['gamma_hat_adj'], yerr=1.96*_sd['gamma_hat_adj'], fmt='.k', color=cm.tab10(1),
+                    **errbarsize, zorder=1)
+        if (j == 3) & (i == 0):
+            ax.plot((0.2,0.2), (-0.05, _m['gamma_hat_adj']), color='tab:red', ls='dashed', lw=2)
+            ax.plot([i,i+0.2], [_m['gamma_hat_adj'], _m['gamma_hat_adj']],  zorder=0, color='tab:red', lw=1.5)
+            ax.fill([0.18,0.2,0.22], [-0.025,_m['gamma_hat_adj'],-0.025], color='tab:red')
+        points.append([i,_m['gamma_hat_adj']])
     custom_lines = [Line2D([0], [0], color=cm.tab10(0), lw=2),
                     Line2D([0], [0], color=cm.tab10(1), lw=2),
-                    Line2D([0], [0], color=cm.tab10(2), lw=2),
-                    Line2D([0], [0], color=cm.tab10(3), lw=2)]
-axs[3].legend(custom_lines, [r'$\hat{\gamma}$', r'$\hat{\beta}$', r'$\hat{\gamma}$ adj', r'$\hat{\beta}$ adj'],
-              loc='upper center', bbox_to_anchor=(0.5,-0.15), ncol=2)
+                    # Line2D([0], [0], color=cm.tab10(2), lw=2),
+                    # Line2D([0], [0], color=cm.tab10(3), lw=2)
+                    ]
+coords = points + [[i,-0.05] for i in range(4,-1,-1)]
+axs[3].fill(*zip(*coords), color='tab:red', alpha=0.2, zorder=0)
+axs[3].annotate('Attenuation bias', xy=(0.2, -0.035), xytext=(0.25,-0.015), arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=-0.3"))
+axs[3].annotate('', xy=(0.75, -0.02), xytext=(4,-0.037), arrowprops=dict(arrowstyle="<-", connectionstyle="arc3,rad=-0.015"))
+axs[3].text(x=2.2, y=-0.027, s='Reduction of attenuation bias', rotation=-4)
+ax.tick_params(axis='both', which='major', labelsize=fontsize)
+axs[3].set_xlabel('Filter (minimum periodicity)', fontsize=fontsize)
+axs[3].legend(custom_lines, [r'Levels', r'Growth'],
+              loc='upper center', bbox_to_anchor=(0.5,-0.35), ncol=2, fontsize=fontsize)
 ax.xaxis.set_major_locator(plt.MaxNLocator(len(periods)))
-# plt.title(r'$\beta$ and $\gamma$ effects: adjustment')
 plt.tight_layout()
 plt.savefig('img/Attenuation_bias.png')
 plt.show()
@@ -356,10 +419,10 @@ def _gen_g_2(_df):
 
 
 # Fig 1a
-df = pd.read_csv(r"C:\Users\Granella\Box\Long Run GDP Growth\TempEffectGDP\Data\Barro_UDel.csv")
+df = pd.read_csv(r"C:\Users\Granella\Box\Long Run GDP Growth\TempEffectGDP\Data\WB_UDel.csv")
 df = df.loc[df.countrycode=='USA', ['year', 'UDel_pop_temp']]
 df = df.dropna(how='any')
-df = df[df.year>=1960]
+df = df[df.year>1960]
 df.columns = ['year', 'temp']
 df['temp'] = sm.OLS(df.temp, sm.add_constant(df.year)).fit().resid
 df = df.set_index('year')
@@ -377,7 +440,7 @@ ax.errorbar(df.index.min()-4, df.temp.mean(), yerr=0.5, color='black')
 ax.text(df.index.min()-3.5,  df.temp.mean(), "1C", fontsize=12)
 plt.legend(loc='upper center', bbox_to_anchor=(0.5,-0.1), title='Filtered oscillations (periods)')
 plt.legend(loc='center left', bbox_to_anchor=(1,0.5), title='Filtered oscillations (periods)', frameon=False)
-plt.title('Temperature fluctutations, United States')
+plt.title('Temperature fluctutations, United States. Butterworth filter')
 plt.tight_layout()
 plt.savefig('img/Fig1a.png')
 plt.show()
@@ -429,22 +492,26 @@ tss = [ [0,0,1,0,0,0,0,0],
         [0,0,1,1,0,0,0,0],
         [0,0,1,1,1,0,0,0],
         ]
-fig, axs = plt.subplots(nrows=3, ncols=3, figsize=(10,7), sharex=True)
+fig, axs = plt.subplots(nrows=3, ncols=3, figsize=(10,7), sharex=True, sharey='row')
 for c in range(3):
     dummy_df = pd.DataFrame({'ts': tss[c]})
     dummy_df = _gen_g_2(dummy_df).reset_index(drop=True)
     axs[0,c].plot(dummy_df.index, dummy_df.ts, color='gray', label='Temperature $T$')
     axs[1,c].plot(dummy_df.index, dummy_df.g_beta, color=cm.tab10(0), linestyle='dashed', label=r'Level effect')
     axs[1,c].plot(dummy_df.index, dummy_df.g_gamma, color=cm.tab10(1), linestyle='dotted', label=r'Growth effect')
-    dummy_df = dummy_df.apply(lambda x: x.cumsum())
+    dummy_df = dummy_df.apply(lambda x: x.cumsum() + x.index/2 + 1)
+    axs[2,c].plot(dummy_df.index, dummy_df.index/2 + 1, color='black')
     axs[2,c].plot(dummy_df.index, dummy_df.g_beta, color=cm.tab10(0), linestyle='dashed', label=r'Level effect')
     axs[2,c].plot(dummy_df.index, dummy_df.g_gamma, color=cm.tab10(1), linestyle='dotted', label=r'Growth effect')
     p = [(4,0.05), (4,-0.20), (4,-0.2)]
     p = [.1, .4,.85]
     for r in range(3):
         yl, yu = axs[r,c].get_ylim()
-        axs[r,c].axhline(0, color='black', zorder=0)
-        axs[r,c].text(4.5, yl + p[r]*(yu-yl), 'baseline')
+        if r<2:
+            axs[r,c].axhline(0, color='black', zorder=0)
+            axs[r,c].text(4.5, yl + p[r]*(yu-yl), 'baseline', rotation=0)
+        else:
+            axs[r,c].text(4.5, yl + p[r]*(yu-yl), 'baseline', rotation=23)
         axs[r,c].yaxis.set_major_formatter(matplotlib.ticker.NullFormatter())
         axs[r,c].xaxis.set_major_formatter(matplotlib.ticker.NullFormatter())
         axs[r,c].xaxis.grid(alpha=0.5)
